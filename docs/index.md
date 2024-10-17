@@ -4,7 +4,7 @@ fastq2EZbakR is a Snakemake pipeline designed to process nucleotide recoding RNA
 
 ## Where to go
 
-Step 0: Checkout the rest of the information on this page to get a sense of fastq2EZbakR's functionality and use cases.
+Step 0: Check out the rest of the information on this page to get a sense of fastq2EZbakR's functionality and use cases.
 
 Step 1: Read the [Deployment](deploy.md) documentation to get up and running with fastq2EZbakR, or the [Slurm](slurm.md) documentation for deploying fastq2EZbakR on an HPC system with a slurm scheduler (e.g., Yale's HPC).
 
@@ -17,7 +17,6 @@ Step 4: Read the [Tips and Tricks](tips.md) documentation for helpful pointers t
 Step 5: Read about [Output](output.md) produced by fastq2EZbakR.
 
 Step 6: Check out ancillary documentation about creating [tracks](tracks.md) and [FAQs](faq.md).
-
 
 ## What fastq2EZbakR does
 
