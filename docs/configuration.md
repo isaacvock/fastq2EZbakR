@@ -1,6 +1,6 @@
 ## Configuring fastq2EZbakR
 
-In the `config/` directory you will find a file named `config.yaml`. If you open it in a text editor, you will see several parameters which you can alter to your heart's content. These parameters are split into two major sections, the first being those that are very important to check and alter as necessary, and the second being parameters whose default values are worth assessing but that are probably ok.
+In the `config/` directory you will find a file named `config.yaml`. If you open it in a text editor, you will see several parameters which you can alter. These parameters are split into two major sections, the first being those that are very important to check and alter as necessary, and the second being parameters whose default values are worth assessing but that are designed to be reasonable in most settings.
 
 ### Parameters you need to set
 
