@@ -4,7 +4,17 @@ In the `config/` directory you will find a file named `config.yaml`. If you open
 
 ### Parameters you need to set
 
- The first parameter that you have to set is at the top of the file:
+At the top of the config file, you can specify whether or not you want to download fastq files from SRA:
+
+``` yaml
+download_fastqs: False
+...
+sra_accessions: []
+```
+
+If so, set `download_fastqs` to True, and specify the SRA accessions in `sra_accessions`. If `download_fastqs` is `False`, `sra_accessions` will be ignored.
+
+If you are providing your own files, the location of these will be specified in the next required parameter:
 
 ``` yaml
 samples:
@@ -24,7 +34,7 @@ The next parameter you have to set denotes the sample names of any -s<sup>4</sup
 control_samples: ["WT_ctl", "KO_ctl"]
 ```
 
-In this case, the samples named WT_ctl and KO_ctl are the -s<sup>4</sup>U control samples.
+In this case, the samples named WT_ctl and KO_ctl are the -s<sup>4</sup>U control samples. If using downloaded fastqs, this should be the relevant SRA accessions of the control samples.
 
 Next is a boolean indicating whether or not your data is paired-end:
 
@@ -70,7 +80,7 @@ Next you will specify the strandedness of your sequencing library:
 strandedness: "reverse"
 ```
 
-The terminology used here is borrowed from HTSeq (though fastq2EZbakR uses featureCounts in place of HTSeq). "reverse" means that the first read in a pair (or the only read if your library is single-end) represents the reverse complement of the sequenced RNA. "yes" means that the first read represents the original sequence of the sequenced RNA. "no" means that your library is unstranded, though it is not recommended that you use an unstranded library for NR-seq data (if you have to though, make sure to count both T-to-C and A-to-G mutations).
+The terminology used here is borrowed from HTSeq (though fastq2EZbakR now uses featureCounts in place of HTSeq). "reverse" means that the first read in a pair (or the only read if your library is single-end) represents the reverse complement of the sequenced RNA. "yes" means that the first read represents the original sequence of the sequenced RNA. "no" means that your library is unstranded, though it is not recommended that you use an unstranded library for NR-seq data (if you have to though, make sure to count both T-to-C and A-to-G mutations if doing standard s<sup>4</sup>U labeling).
 
 Finally, what makes fastq2EZbakR special is all of the ways in which you can assign reads to features. In the `strategies` section, you can turn on one of these, denoted `Transcripts`:
 
