@@ -10,6 +10,7 @@ nav:
   - Output: output.md
   - Colored Tracks: tracks.md
   - FAQ: faq.md
+  - Release Notes: changes.md
 theme: 
   name: readthedocs
   navigation_depth: 5
