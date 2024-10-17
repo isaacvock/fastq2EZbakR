@@ -67,6 +67,7 @@ It can take either FASTQ files or BAM files as input. If FASTQ files are provide
 The following steps will run in either the FASTQ or BAM file input cases: 
 
 1. BAM files are filtered and sorted by read name. The former removes unaligned reads and non-primary alignments. The latter is important for parallelization of mutation counting, and is required by the feature assignment scripts.
+1. If you have -label control samples (e.g., -s<sup>4</sup>U control samples in a standard NR-seq experiment), these can be used to call SNPs. These will be used to avoid false positive mutation counts.
 1. Reads are assigned to feature, either using featureCounts or custom scripting. See [Feature Assignment](features.md) for details of what feature assignment strategies exist. You can choose which ones to implement in a particular pipeline run under the `features` parameter in the config.yaml file.
 1. Mutations are counted with some custom scripting. All mutation types are tallied in the intermediate files created in the `results/counts` directory created by running fastq2EZbakR. You can specify which to include in the final processed cB file in the `mut_tracks` parameter in your config.yaml file.
 1. Feature assignment and mutation counts are merged.
