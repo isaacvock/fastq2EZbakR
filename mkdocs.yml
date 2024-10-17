@@ -5,9 +5,10 @@ nav:
   - Deployment: deploy.md
   - Slurm/Yale HPC: slurm.md
   - Configuration: configuration.md
+  - Feature Assignment: features.md
   - Tips and Tricks: tips.md
   - Output: output.md
-  - Colored tracks: tracks.md
+  - Colored Tracks: tracks.md
   - FAQ: faq.md
 theme: 
   name: readthedocs
