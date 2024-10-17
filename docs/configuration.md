@@ -18,13 +18,13 @@ samples:
 `samples` is the set of \[sample ID\]:\[path\] pairs, where the paths are to directories containing fastq files that you want to process. **NOTE: each directory must contain a single fastq file or pair of fastq files**. Delete the existing sample names and paths and add yours. The sample names in this example are `WT_1`, `WT_2`, `WT_ctl`, `KO_1`, `KO_2`, and `KO_ctl`. These are the sample names that will show up in the `sample` column of the output cB.csv file. The `:` is necessary to distinguish the sample name from what follows, the path to the relevant fastq-containing directory. The path can either be relative to the directory that you deployed to (i.e., `workdir` in this example), or an absolute path. In this example, the fastq files are located in a directory called `samples` that is inside of a directory called `data` located in `workdir`. 
 
 
-The next parameter you have to set denotes the sample names of any -s4U control samples (i.e., samples that were not fed s4U or a similar metabolic label). This is only used to determine which samples should be analyzed for calling SNPs:
+The next parameter you have to set denotes the sample names of any -s<sup>4</sup>U control samples (i.e., samples that were not fed s<sup>4</sup>U or a similar metabolic label). This is only used to determine which samples should be analyzed for calling SNPs:
 
 ``` yaml
 control_samples: ["WT_ctl", "KO_ctl"]
 ```
 
-In this case, the samples named WT_ctl and KO_ctl are the -s4U control samples.
+In this case, the samples named WT_ctl and KO_ctl are the -s<sup>4</sup>U control samples.
 
 Next is a boolean indicating whether or not your data is paired-end:
 

@@ -28,7 +28,7 @@ The input to fastq2EZbakR is either FASTQ files or aligned BAM files (the latter
 * sj - Logical: TRUE if read contains exon-exon spliced junction
 * n - Number of reads which have the identical set of values described above
 
-In addition, columns reporting mutation counts and nucleotide counts will be included. For a standard NR-seq dataset (s4U labeling), that means tracking T-to-C mutation counts (column name: TC) and the number of reference Ts covered by a read (column name: nT). Finally, reads will be assigned to a set of annotated features, and columns will be included based on which of these feature assignment strategies you have activated in your particular pipeline run. The possibilities include:
+In addition, columns reporting mutation counts and nucleotide counts will be included. For a standard NR-seq dataset (s<sup>4</sup>U labeling), that means tracking T-to-C mutation counts (column name: TC) and the number of reference Ts covered by a read (column name: nT). Finally, reads will be assigned to a set of annotated features, and columns will be included based on which of these feature assignment strategies you have activated in your particular pipeline run. The possibilities include:
 
 * GF: gene read was assigned to (any region of gene)
 * XF: gene read was assigned to (only exonic regions of gene)
