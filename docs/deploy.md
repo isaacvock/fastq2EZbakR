@@ -8,7 +8,7 @@ All of the steps necessary to deploy fastq2EZbakR are discussed in great detail 
 
 ``` bash
 ### 
-# PREREQUISITES: INSTALL MAMBA AND GIT (only need to do once per system)
+# PREREQUISITES: INSTALL MAMBA or CONDA AND GIT (only need to do once per system)
 ###
 
 # CREATE ENVIRONMENT (only need to do once per system)
@@ -121,7 +121,7 @@ The `--rerun-triggers mtime` addition is a suggestion that will prevent the pipl
 Some additional parameters that you might find useful include:
 
 * `--show-failed-logs`: When you include this, the log files for any rules that fail will be print to the screen. This can make it easier to figure out which steps went wrong and to quickly check the error messages.
-* `--keep-going`: Including this will make Snakemake continue running independent rules even if one rule fails. Snakemake doesn't do this by default because the idea is if something went wrong in a rule, there could be upstream problems lurking that will plague all downstream rules. The `--keep-going` option can be useful in pipelines like bam2bakR though, where there are two independent rules at the end of the pipeline (makecB and maketdf) that don't need each other to complete successfully for the other to complete, and where one of the rules (maketdf) can fail due to a number of reasons (not enough available RAM, IGVtools bugs, etc.) that will not impact the other rule (makecB).
+* `--keep-going`: Including this will make Snakemake continue running independent rules even if one rule fails. Snakemake doesn't do this by default because the idea is if something went wrong in a rule, there could be upstream problems lurking that will plague all downstream rules. The `--keep-going` option can be useful in pipelines like fastq2EZbakR though, where there are two independent rules at the end of the pipeline (makecB and maketdf) that don't need each other to complete successfully for the other to complete, and where one of the rules (maketdf) can fail due to a number of reasons (not enough available RAM, IGVtools bugs, etc.) that will not impact the other rule (makecB).
 
 There are **A LOT** of adjustable parameters that you can play with when running a Snakemake pipeline. I would point you to the [Snakemake documentation](https://snakemake.readthedocs.io/en/stable/executing/cli.html) 
 for the details on everything you can change when running the pipeline.
