@@ -19,7 +19,7 @@ samples:
   WT_ctl: data/samples/WT_nos4U
 ```
 
-then <sample name\> will be eiter `WT_1`, `WT_2`, or `WT_ctl`. Note, tracks are made for both +s4U and -s4U samples.
+then <sample name\> will be eiter `WT_1`, `WT_2`, or `WT_ctl`. Note, tracks are made for both +s<sup>4</sup>U and -s<sup>4</sup>U samples.
 
 <mutation type\> is whatever you specified in the config under `mut_tracks`. If you specified "TC,GA", then there will be separate TC (colored by T-to-C mutations) and GA (colored by G-to-A mutations) .tdf files. TC tracks are colored with different shades of red while GA tracks are colored with different shades of blue. 
 

@@ -7,8 +7,8 @@ All output files will be placed in a directory named `results` that will be crea
 Processed bam files:
 
 * Sorted and filtered bam/sam files are in `results/sf_reads/`
-  - These are passed to the mutation counting and feature assignment scripts
-  - Sorting and filtering is accomplished with a custom shell script.
+  - These are passed to the mutation counting and feature assignment scripts.
+  - Non-primary alignments and unaligned reads are filtered out. Reads are sorted by read name.
 
 Mutation counting output:
 
@@ -35,7 +35,7 @@ Colored sequencing tracks:
 Single nucleotide polymorphism (SNP) calls:
 
 * SNP calls are in two formats (.txt and VCF)in the `results/snps/` directory.
-  - If you did not have any -s4U control samples, then the .vcf file will not exist and the .txt file will be empty
+  - If you did not have any -s<sup>4</sup>U control samples, then the .vcf file will not exist and the .txt file will be empty
   - These SNP calls are used to identify nucleotides which should be ignored for T-to-C mutation counting
 
 Normalization:

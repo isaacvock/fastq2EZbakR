@@ -2,7 +2,7 @@
 
 ### Why are there a low number of T-to-C mutations in the cB?
 
-If there are very few T-to-C mutations in the final cB.csv file (e.g., if sample-wide mutation rates in +s4U samples are < 0.003), then you may have used the incorrect value for the `strandedness` parameter in the config. One way to tell if this is the case is by looking at one of the +s4U sample counts.csv files in `results/counts/` and checking for an abundance of A-to-G mutations. If this is the case, flip the value of `strandedness` to the opposite of whatever you used.
+If there are very few T-to-C mutations in the final cB.csv file (e.g., if sample-wide mutation rates in +s<sup>4</sup>U samples are < 0.003), then you may have used the incorrect value for the `strandedness` parameter in the config. One way to tell if this is the case is by looking at one of the +s<sup>4</sup>U sample counts.csv files in `results/counts/` and checking for an abundance of A-to-G mutations. If this is the case, flip the value of `strandedness` to the opposite of whatever you used.
 
 Related to the first point, a good sanity check after running the pipeline is going into R and checking the raw mutation rates as such:
 
