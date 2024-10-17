@@ -55,7 +55,7 @@ fastq2EZbakR provides a number of unique functionalites not found in other estab
 
 Below is a simplfied schematic of the major steps performed by the fastq2EZbakR. 
 
-[pipeline](images/Simple_Pipeline.png)
+![pipeline](images/Simple_Pipeline.png)
 
 It can take either FASTQ files or BAM files as input. If FASTQ files are provided, the following steps are run:
 
