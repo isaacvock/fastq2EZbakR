@@ -2,6 +2,27 @@
 
 All output files will be placed in a directory named `results` that will be created the first time you run bam2bakR. The output of greatest interest, the gzipped cB.csv file, will be in `results/cB/`. The cB file and its columns is discussed in great detail on the [intro](index.md) page.
 
+As of version 0.3.0 (released on 12/6/2024), there is a new parameter in the config file called `final_output` that has three sub-parameters (`cB`, `cUP`, and `arrow`).
+Each takes a boolean argument (`True` or `False`) and detemrines which file types get created. With this addition, there are now two additional types of output 
+you can optionally generate:
+
+* A "counts U-content adjust Poisson" (cUP) file
+  - This is identical to the cB file, except the nucleotide content columns have been replaced with an average over reads with identical mutational
+  content. This offers significant compression relative to a cB file while still allowing accurate NR-seq analyses, as originally described in The
+  [bakR paper](https://rnajournal.cshlp.org/content/29/7/958.full). 
+  - This can be found in the `results/cUP/` directory if you set `cUP: True` in your config file.
+* A partitioned dataset of parquet or csv files
+  - This splits the cB file into one file per sample, with each being identical in structure to a full cB file. The structure and file naming scheme
+  is meant to make it convenient to work with using R's [arrow package](https://arrow.apache.org/docs/r/). For example, EZbakR can use this dataset to limit the amount of RAM required
+  to analyze large, multi-sample datasets (see [EZbakR docs](https://isaacvock.github.io/EZbakR/articles/EstimateFractions.html#using-the-apache-arrow-backend) for details).
+  - This can be found in the `results/arrow_dataset` directory if you set `arrow: True` in your config file. This directory will always be created but
+  the parquet/csv files will be empty if you set `arrow: False`.
+  - By default, the dataset is one of parquet files, the Apache Software Foundations optimized columnar data format. If `lowRAM: True` in your config,
+  then these will be csv files instead.
+
+You can set any combination of final_outputs to `True` (and at least one of the three needs to be set to `True`)
+
+
 **Universal fastq2EZbakR output**
 
 Processed bam files:

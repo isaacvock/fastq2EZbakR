@@ -121,6 +121,10 @@ The next section of parameters have default settings that will work in a lot of 
 * `lowRAM`: If True, this can significantly cut down on RAM usage of the mutation count and feature assignment merging step. This is done through sorting the tables to be merged and merging them with a custom Python script that iterates through the rows of all tables to be merged, never loading any of them fully into RAM. The downside of this strategy is additional runtime and temporary disk space usage. With `lowRAM` set to False, the RAM used by the merging step is a function of the sequencing depth (i.e., number of reads in your individual BAM files). This can cause problems for particularly deeply sequenced libraries. For example, a 300 million read library may require > 100 GB for this step.
 * `mutpos`: If True, then an additional output will be created, called a cU file, that tracks the mutational content of all mutation types specified in `mut_tracks`. **NOTE**: this option requires a lot of disk space for large datasets.
 * `run_rsem`: If True, and if FASTQs are provided and `aligner` is `"star"`, then RSEM will be used to estimate transcript isoform abundances.
+* `final_output`: Specifies which output file should be created. Options are:
+    - cB: Standard cB file create by default.
+    - cUP: cB file but with the average nucleotide content over a set of reads with identical mutational content rather than tracking both the mutational and nucleotide content. See [output.md] for details. NOTE: Not currently compatible with `lowRAM: True`.
+    - arrow: Dataset of cB-like files, one sample per file, which pairs well with the [arrow R frontend](https://arrow.apache.org/docs/r/) and [EZbakR](https://isaacvock.github.io/EZbakR/articles/EstimateFractions.html#using-the-apache-arrow-backend).
 
 ### Remaining parameters
 
