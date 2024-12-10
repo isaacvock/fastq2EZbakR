@@ -12,7 +12,7 @@ you can optionally generate:
 * A partitioned dataset of parquet or csv files
     - This splits the cB file into one file per sample, with each being identical in structure to a full cB file. The structure and file naming scheme is meant to make it convenient to work with using R's [arrow package](https://arrow.apache.org/docs/r/). For example, EZbakR can use this dataset to limit the amount of RAM required to analyze large, multi-sample datasets (see [EZbakR docs](https://isaacvock.github.io/EZbakR/articles/EstimateFractions.html#using-the-apache-arrow-backend) for details).
     - This can be found in the `results/arrow_dataset` directory if you set `arrow: True` in your config file. This directory will always be created but the parquet/csv files will be empty if you set `arrow: False`.
-    - By default, the dataset is one of parquet files, the Apache Software Foundations optimized columnar data format. If `lowRAM: True` in your config, then these will be csv files instead.
+    - By default, the dataset is one of parquet files, the [Apache Software Foundation's](https://parquet.apache.org/) optimized columnar data format. If `lowRAM: True` in your config, then these will be csv files instead.
 
 By default, you can set any combination of final_outputs to `True` (and at least one of the three needs to be set to `True`). If `lowRAM: True` in
 your config, then `cUP` cannot currently 
