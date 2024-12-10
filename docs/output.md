@@ -7,20 +7,15 @@ Each takes a boolean argument (`True` or `False`) and detemrines which file type
 you can optionally generate:
 
 * A "counts U-content adjust Poisson" (cUP) file
-  - This is identical to the cB file, except the nucleotide content columns have been replaced with an average over reads with identical mutational
-  content. This offers significant compression relative to a cB file while still allowing accurate NR-seq analyses, as originally described in The
-  [bakR paper](https://rnajournal.cshlp.org/content/29/7/958.full). 
-  - This can be found in the `results/cUP/` directory if you set `cUP: True` in your config file.
+    - This is identical to the cB file, except the nucleotide content columns have been replaced with an average over reads with identical mutational content. This offers significant compression relative to a cB file while still allowing accurate NR-seq analyses, as originally described in the [bakR paper](https://rnajournal.cshlp.org/content/29/7/958.full). 
+    - This can be found in the `results/cUP/` directory if you set `cUP: True` in your config file.
 * A partitioned dataset of parquet or csv files
-  - This splits the cB file into one file per sample, with each being identical in structure to a full cB file. The structure and file naming scheme
-  is meant to make it convenient to work with using R's [arrow package](https://arrow.apache.org/docs/r/). For example, EZbakR can use this dataset to limit the amount of RAM required
-  to analyze large, multi-sample datasets (see [EZbakR docs](https://isaacvock.github.io/EZbakR/articles/EstimateFractions.html#using-the-apache-arrow-backend) for details).
-  - This can be found in the `results/arrow_dataset` directory if you set `arrow: True` in your config file. This directory will always be created but
-  the parquet/csv files will be empty if you set `arrow: False`.
-  - By default, the dataset is one of parquet files, the Apache Software Foundations optimized columnar data format. If `lowRAM: True` in your config,
-  then these will be csv files instead.
+    - This splits the cB file into one file per sample, with each being identical in structure to a full cB file. The structure and file naming scheme is meant to make it convenient to work with using R's [arrow package](https://arrow.apache.org/docs/r/). For example, EZbakR can use this dataset to limit the amount of RAM required to analyze large, multi-sample datasets (see [EZbakR docs](https://isaacvock.github.io/EZbakR/articles/EstimateFractions.html#using-the-apache-arrow-backend) for details).
+    - This can be found in the `results/arrow_dataset` directory if you set `arrow: True` in your config file. This directory will always be created but the parquet/csv files will be empty if you set `arrow: False`.
+    - By default, the dataset is one of parquet files, the Apache Software Foundations optimized columnar data format. If `lowRAM: True` in your config, then these will be csv files instead.
 
-You can set any combination of final_outputs to `True` (and at least one of the three needs to be set to `True`)
+By default, you can set any combination of final_outputs to `True` (and at least one of the three needs to be set to `True`). If `lowRAM: True` in
+your config, then `cUP` cannot currently 
 
 
 **Universal fastq2EZbakR output**
@@ -28,47 +23,46 @@ You can set any combination of final_outputs to `True` (and at least one of the 
 Processed bam files:
 
 * Sorted and filtered bam/sam files are in `results/sf_reads/`
-  - These are passed to the mutation counting and feature assignment scripts.
-  - Non-primary alignments and unaligned reads are filtered out. Reads are sorted by read name.
+    - These are passed to the mutation counting and feature assignment scripts.
+    - Non-primary alignments and unaligned reads are filtered out. Reads are sorted by read name.
 
 Mutation counting output:
 
 * `<sampleID>_counts.csv.gz` files are in `results/counts/`
-  - Each row of this table corresponds to a single read or read pair
-  - The columns represent counts of every mutation type and every type of nucleotide
-  - These can be useful for tracking down problems in the mutation counting. See [FAQs](faqs.md) for details.
-  - Mutation counting is accomplished with a custom python script called by a custom shell script.
+    - Each row of this table corresponds to a single read or read pair
+    - The columns represent counts of every mutation type and every type of nucleotide
+    - These can be useful for tracking down problems in the mutation counting. See [FAQs](faqs.md) for details.
+    - Mutation counting is accomplished with a custom python script called by a custom shell script.
 
 Merged feature assignment and mutation counting:
 
 * Tables that have combined the exonic and gene feature assignment information with the mutation calling output are in `results/merge_feature_and_muts/<sampleID>_counts.csv.gz`. 
-  - If a read was not assigned to a particular feature type (i.e., exon or gene), then it will have the string "__no_feature" in the relevant column.
+    - If a read was not assigned to a particular feature type (i.e., exon or gene), then it will have the string "__no_feature" in the relevant column.
 * If `lowRAM` in the config.yaml file is set to `True`, then this merged output will be located in the `results/lowram_merge_features_and_counts` directory.
 
 
 Colored sequencing tracks:
 
 * .tdf files that can be used to make the sequencing tracks colored by mutational content (described [here](tracks.md)) are in `results/tracks`
-  - Each sample has 12 .tdf files, named like `<sampleID>.TC.<#>.<strand>.tdf`, where `<#>` represents a number from 0 to 5 (number of T-to-C mutations in the reads used to make that file) and `<strand>` is either `pos` (plus strand) or `min` (minus strand).
-  - Currently, if your library is reverse stranded (i.e., first read in a pair represents reverse complement of original RNA sequence), then the plus and minus strand tracks will be flipped. This does not change interpretation of the tracks, you just have to be aware of that when using an annotation to visually decide what reads are the 
-  product of sense and antisense transcription.
+    - Each sample has 12 .tdf files, named like `<sampleID>.TC.<#>.<strand>.tdf`, where `<#>` represents a number from 0 to 5 (number of T-to-C mutations in the reads used to make that file) and `<strand>` is either `pos` (plus strand) or `min` (minus strand).
+    - Currently, if your library is reverse stranded (i.e., first read in a pair represents reverse complement of original RNA sequence), then the plus and minus strand tracks will be flipped. This does not change interpretation of the tracks, you just have to be aware of that when using an annotation to visually decide what reads are the product of sense and antisense transcription.
 
 Single nucleotide polymorphism (SNP) calls:
 
 * SNP calls are in two formats (.txt and VCF)in the `results/snps/` directory.
-  - If you did not have any -s<sup>4</sup>U control samples, then the .vcf file will not exist and the .txt file will be empty
-  - These SNP calls are used to identify nucleotides which should be ignored for T-to-C mutation counting
+    - If you did not have any -s<sup>4</sup>U control samples, then the .vcf file will not exist and the .txt file will be empty
+    - These SNP calls are used to identify nucleotides which should be ignored for T-to-C mutation counting
 
 Normalization:
 
 * Scale factors calculated using edgeR's TMM strategy are located in `results/normalization/scale`
-  - This is a simple tab-delimited text file with two "columns", one corresponding to the sample ID, and the other corresponding to the scale factor
-  - These will be used to scale the heights of the sequencing tracks in `results/tracks/`.
+    - This is a simple tab-delimited text file with two "columns", one corresponding to the sample ID, and the other corresponding to the scale factor
+    - These will be used to scale the heights of the sequencing tracks in `results/tracks/`.
 
 Feature assignment:
 
 * Tables of read counts for each feature assigned via featureCounts (genes, exons, exonic_bins, eej, and eij) will be located in a directory called `results/featurecounts_<feature>/`, where `<feature>` refers to the type of feature reads were assigned to.
-  - If using feature assignment strategies that don't use featureCounts, all output produced by these are temporary. See below for details regaring what this means and how to keep these files if necessary. In either case, the read assignment information is also present in the merged tables discussed above.
+    - If using feature assignment strategies that don't use featureCounts, all output produced by these are temporary. See below for details regaring what this means and how to keep these files if necessary. In either case, the read assignment information is also present in the merged tables discussed above.
 
 **fastq2EZbakR output if providing fastq files (rather than bams) as input**
 
