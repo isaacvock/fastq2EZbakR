@@ -50,14 +50,14 @@ def get_input_fastqs(wildcards):
     if config.get("download_fastqs", True):
         print("Download fastqs: Yes")
         if config.get("PE", False):
-            SRA_READS = ["1.fastq", "2.fastq"]
+            SRA_READS = ["_1.fastq", "_2.fastq"]
             print(f"Sample {wildcards.sample} is paired-end.")
         else:
             SRA_READS = [".fastq"]
             print(f"Sample {wildcards.sample} is single-end.")
 
         paths = [
-            f"results/download_fastq/{wildcards.sample}_{read}" for read in SRA_READS
+            f"results/download_fastq/{wildcards.sample}{read}" for read in SRA_READS
         ]
         print(f"Paths: {sorted(paths)}")
         return sorted(paths)
