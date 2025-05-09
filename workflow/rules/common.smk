@@ -578,7 +578,7 @@ else:
 ### Target rule input
 
 # Need to specify one of final_output to be True
-if not (any(config["final_output"].values()) or get(config, "mutpos", False)):
+if not (any(config["final_output"].values()) or config.get("mutpos", False)):
     raise ValueError("One of final_output values must be True!")
 
 # lowRAM can only work with a single type of output
