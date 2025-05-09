@@ -613,16 +613,17 @@ def get_other_output():
                 )
             )
 
-    # Tracks always get made
-    target.append(
-        expand(
-            "results/tracks/{sample}.{mut}.{id}.{strand}.tdf",
-            sample=SAMP_NAMES,
-            mut=Mutation_Types,
-            id=[0, 1, 2, 3, 4, 5],
-            strand=["pos", "min"],
+    # Tracks
+    if config.get("make_tracks", True):
+        target.append(
+            expand(
+                "results/tracks/{sample}.{mut}.{id}.{strand}.tdf",
+                sample=SAMP_NAMES,
+                mut=Mutation_Types,
+                id=[0, 1, 2, 3, 4, 5],
+                strand=["pos", "min"],
+            )
         )
-    )
 
     # fastQC output
     if not config["bam2bakr"]:

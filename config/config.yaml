@@ -167,6 +167,10 @@ lowRAM: False
 mutpos: False
 
 
+# Make colored sequencing tracks?
+make_tracks: True
+
+
 # Use RSEM to quantify transcript isoform abundances?
   # Only relevant if aligner = 'star' and fastq files are
   # provided as input
