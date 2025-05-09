@@ -50,14 +50,14 @@ def get_input_fastqs(wildcards):
     if config.get("download_fastqs", True):
         print("Download fastqs: Yes")
         if config.get("PE", False):
-            SRA_READS = ["1.fastq", "2.fastq"]
+            SRA_READS = ["_1.fastq", "_2.fastq"]
             print(f"Sample {wildcards.sample} is paired-end.")
         else:
             SRA_READS = [".fastq"]
             print(f"Sample {wildcards.sample} is single-end.")
 
         paths = [
-            f"results/download_fastq/{wildcards.sample}_{read}" for read in SRA_READS
+            f"results/download_fastq/{wildcards.sample}{read}" for read in SRA_READS
         ]
         print(f"Paths: {sorted(paths)}")
         return sorted(paths)
@@ -578,7 +578,7 @@ else:
 ### Target rule input
 
 # Need to specify one of final_output to be True
-if not any(config["final_output"].values()):
+if not (any(config["final_output"].values()) or config.get("mutpos", False)):
     raise ValueError("One of final_output values must be True!")
 
 # lowRAM can only work with a single type of output
@@ -613,16 +613,17 @@ def get_other_output():
                 )
             )
 
-    # Tracks always get made
-    target.append(
-        expand(
-            "results/tracks/{sample}.{mut}.{id}.{strand}.tdf",
-            sample=SAMP_NAMES,
-            mut=Mutation_Types,
-            id=[0, 1, 2, 3, 4, 5],
-            strand=["pos", "min"],
+    # Tracks
+    if config.get("make_tracks", True):
+        target.append(
+            expand(
+                "results/tracks/{sample}.{mut}.{id}.{strand}.tdf",
+                sample=SAMP_NAMES,
+                mut=Mutation_Types,
+                id=[0, 1, 2, 3, 4, 5],
+                strand=["pos", "min"],
+            )
         )
-    )
 
     # fastQC output
     if not config["bam2bakr"]:
