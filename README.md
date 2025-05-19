@@ -67,3 +67,45 @@ snakedeploy deploy-workflow https://github.com/isaacvock/fastq2EZbakR.git . --br
 # See [here](https://snakemake.readthedocs.io/en/stable/executing/cli.html) for details on all of the configurable parameters
 snakemake --cores all --use-conda --rerun-triggers mtime --keep-going
 ```
+
+## Alternative pipeline deployment strategy (to deal with 429 errors)
+
+A recent [change to GitHub](https://github.blog/changelog/2025-05-08-updated-rate-limits-for-unauthenticated-requests/) has led to intermittent fastq2EZbakR crashing errors, when running fastq2EZbakR as detailed above. The errors will look something like:
+
+```
+Failed to open source file https://raw.githubusercontent.com/isaacvock/fastq2EZbakR/develop/workflow/scripts/bam2bakR/mut_call.sh
+HTTPError: 429 Client Error: Too Many Requests for url: https://raw.githubusercontent.com/isaacvock/fastq2EZbakR/develop/workflow/scripts/bam2bakR/mut_call.sh
+```
+
+While simply rerunning the pipeline can often resolve these errors, a more consistent workaround is to clone the repo locally rather than use Snakedeploy. In this case, the deployment workflow looks like:
+
+``` bash
+### 
+# PREREQUISITES: INSTALL MAMBA or CONDA AND GIT (only need to do once per system)
+###
+
+# CREATE ENVIRONMENT (only need to do once per system)
+mamba create -c conda-forge -c bioconda --name snakemake snakemake
+
+# (NEW STEP) CLONE REPO LOCALLY (only need to do once per system
+git clone https://github.com/isaacvock/fastq2EZbakR.git
+
+# CREATE AND NAVIGATE TO WORKING DIRECTORY (only need to do once per dataset)
+mkdir path/to/working/directory
+cd path/to/working/directory
+
+# (MODIFIED STEP) "DEPLOY" PIPELINE TO YOUR WORKING DIRECTORY (only need to do once per dataset)
+cp -r path/to/fastq2EZbakR/workflow/ ./
+rp -r path/to/fastq2EZbakR/config/ ./
+
+###
+# EDIT CONFIG FILE (need to do once for each new dataset)
+###
+
+# RUN PIPELINE
+
+# See [here](https://snakemake.readthedocs.io/en/stable/executing/cli.html) for details on all of the configurable parameters
+snakemake --cores all --use-conda --rerun-triggers mtime --keep-going
+```
+
+The difference is that now instead of using Snakedeploy (which you no longer even need to install), you clone the repo locally and copy over the workflow and config directories to wherever you want to run the pipeline. The downside of this approach is that if I make changes to the pipeline that you want to adopt, you will have to manually "update" the pipeline by going to the fastq2EZbakR directory and running `git pull`, and then retransferring the workflow directory (and potentially the config directory too if the pipeline change involves new config parameters you would like to adjust).
