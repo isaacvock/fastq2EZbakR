@@ -6,6 +6,7 @@
 
 module purge
 
+eval "$(mamba shell hook --shell bash)"
 mamba activate fastq2EZbakR
 if [ $? -ne 0 ]; then
     echo "Failed to activate conda environment. Exiting."
