@@ -30,12 +30,27 @@ sra_accessions: ["SRR24994162", "SRR24994161"]
   # Each set of fastq files must be in a different directory
 # path to individual bam files if bam2bakr is True
 samples:
-    WT_1: data/fastq/WT_1
-    WT_2: data/fastq/WT_2
-    WT_ctl: data/fastq/WT_ctl
-    KO_1: data/fastq/KO_1
-    KO_2: data/fastq/KO_2
-    KO_ctl: data/fastq/KO_ctl
+    T29_8min_4TU: data/fastq/T29_8min_4TU/
+    T29_10min_4TU: data/fastq/T29_10min_4TU/
+    T29_12min_4TU: data/fastq/T29_12min_4TU/
+    T29_no_4TU: data/fastq/T29_no_4TU/
+    UV17_A_noUV: data/fastq/UV17_A_noUV/
+    UV17_A_T0: data/fastq/UV17_A_T0/
+    UV17_A_T15: data/fastq/UV17_A_T15/
+    UV17_A_T30: data/fastq/UV17_A_T30/
+    UV17_A_T45: data/fastq/UV17_A_T45/
+    UV17_A_T60: data/fastq/UV17_A_T60/
+    UV17_A_T120: data/fastq/UV17_A_T120/
+    UV17_B_noUV: data/fastq/UV17_B_noUV/
+    UV17_B_T0: data/fastq/UV17_B_T0/
+    UV17_B_T15: data/fastq/UV17_B_T15/
+    UV17_B_T30: data/fastq/UV17_B_T30/
+    UV17_B_T45: data/fastq/UV17_B_T45/
+    UV17_B_T60: data/fastq/UV17_B_T60/
+    UV17_B_T120: data/fastq/UV17_B_T120/
+    UV17_B_noUV_100nt: data/fastq/UV17_B_noUV_100nt/
+    UV17_B_T15_100nt: data/fastq/UV17_B_T15_100nt/
+
 
 ## example of what samples will look like for bam file input
 # samples:
@@ -48,18 +63,18 @@ samples:
 
 
 # -s4U control sample IDs
-control_samples: ['WT_ctl', 'KO_ctl']
+control_samples: ['T29_no_4TU']
 
 # Paired end? 
   # Set to True or False, no double quotes
 PE: True
 
 # Path to genome fasta file
-genome: data/genome/genome.fasta
+genome: data/genome/SacCer3.fa
 
 
 # Path to annotation gtf file
-annotation: data/annotation/genome.gtf
+annotation: data/annotation/fixed_Galaxy_sc.gtf
 
 
 # Which aligner to use? 
@@ -108,9 +123,9 @@ strandedness: "reverse"
 features:
     genes: True
     exons: True
-    tec: False
-    exonic_bins: False
-    junctions: False
+    tec: True
+    exonic_bins: True
+    junctions: True
     eej: False
     eij: False
 
@@ -139,7 +154,7 @@ spikename: "\"\""
 
 # Skip adapter trimming? 
   # If True, will skip fastp step
-skip_trimming: False
+skip_trimming: True
 
 
 # Path to flattened annotation 
@@ -191,7 +206,7 @@ run_rsem: True
 final_output:
   cB: True
   cUP: False
-  arrow: False
+  arrow: True
 
 
 ####### OPTIONAL PARAMETERS FOR THE VARIOUS TOOLS AND SCRIPTS USED #######
@@ -262,7 +277,7 @@ star_index_params: ""
 
 
 # SAM tags to add to alignment
-star_sam_tags: ["NH", "HI", "AS", "NM", "MD", "nM"]
+star_sam_tags: ["NH", "HI", "AS", "NM", "MD", "nM", "jI", "jM"]
 
 
 # Optional parameters to set for star align
