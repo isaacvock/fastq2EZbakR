@@ -37,7 +37,7 @@ else:
             trimmed=temp("results/trimmed/{sample}.1.fastq"),
             failed=temp("results/trimmed/{sample}.1.failed.fastq"),
             html="results/reports/{sample}.1.html",
-            json="results/reports{sample}.1.json",
+            json="results/reports/{sample}.1.json",
         log:
             "logs/fastp/{sample}.log",
         params:

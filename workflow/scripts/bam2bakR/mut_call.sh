@@ -135,6 +135,7 @@ fi
 
 ## Need to add mutation call script to scripts!
 
+shopt -s extglob # to deal with more specific regex below
 # Call mutations
     parallel -j $cpus "python $mutcnt -b {1} \
                                               --mutType $mut_tracks \
@@ -142,7 +143,7 @@ fi
 											  --SNPs "./results/snps/snp.txt" \
                                               --strandedness $strand \
                                               $( if [ "$mutpos" = "True" ]; then echo '--mutPos '; fi ) \
-                                              --reads $format" ::: ./results/counts/*_"$sample"_frag.bam \
+                                              --reads $format" ::: ./results/counts/+([0-9])_"$sample"_frag.bam \
 
 
     echo "** Mutations called for sample $sample"
