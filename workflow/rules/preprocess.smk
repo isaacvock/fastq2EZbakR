@@ -72,7 +72,7 @@ rule fastqc:
     input:
         get_fastqc_read,
     output:
-        html="results/fastqc/{sample}_r{read}.html",
+        html="results/fastqc/{sample}_r{read}_fastqc.html",
         zip="results/fastqc/{sample}_r{read}_fastqc.zip",
     log:
         "logs/fastqc/{sample}_r{read}.log",
