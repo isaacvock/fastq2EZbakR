@@ -151,10 +151,10 @@ shopt -s extglob # to deal with more specific regex below
 
 # Combine output from fragments into single file
     # 1) _count.csv files
-    awk 'FNR > 1 || NR == 1' ./results/counts/*_"$sample"_frag_counts.csv \
+    awk 'FNR > 1 || NR == 1' ./results/counts/+([0-9])_"$sample"_frag_counts.csv \
         | pigz -p $cpus > "$output"
 
-    rm ./results/counts/*_"$sample"_frag_counts.csv
+    rm ./results/counts/+([0-9])_"$sample"_frag_counts.csv
 
 
 
@@ -162,7 +162,7 @@ shopt -s extglob # to deal with more specific regex below
 
 
 
-	rm -f ./results/counts/*_"$sample"_frag.bam
+	rm -f ./results/counts/+([0-9])_"$sample"_frag.bam
 
 	echo '* Cleaning up fragmented .bam files'
 
@@ -173,12 +173,12 @@ shopt -s extglob # to deal with more specific regex below
 
         # Pre-sort cU fragments
         parallel -j $cpus "tail -n +2 {1} \
-                                | LC_COLLATE=C sort > {1.}_sort.csv" ::: ./results/counts/*_"$sample"_frag_cU.csv
-        rm ./results/counts/*_"$sample"_frag_cU.csv                    
+                                | LC_COLLATE=C sort > {1.}_sort.csv" ::: ./results/counts/+([0-9])_"$sample"_frag_cU.csv
+        rm ./results/counts/+([0-9])_"$sample"_frag_cU.csv                    
 
         # Combine pre-sorted fragments
-        LC_COLLATE=C sort -m ./results/counts/*_"$sample"_frag_cU_sort.csv > ./results/counts/"$sample"_cU_comb.csv 
-        rm ./results/counts/*_"$sample"_frag_cU_sort.csv
+        LC_COLLATE=C sort -m ./results/counts/+([0-9])_"$sample"_frag_cU_sort.csv > ./results/counts/"$sample"_cU_comb.csv 
+        rm ./results/counts/+([0-9])_"$sample"_frag_cU_sort.csv
 
         # Get ammount of data
         cUsize=$(wc -l ./results/counts/"$sample"_cU_comb.csv | cut -d ' ' -f 1)
@@ -241,10 +241,10 @@ shopt -s extglob # to deal with more specific regex below
 
         # Add header and process sorted fragments in parallel
         cat <(echo "rname,gloc,tp,trials,n") \
-            <(parallel -j $cpus awkProcessCU {1} ::: ./results/counts/*_${sample}_cU_comb.csv) \
+            <(parallel -j $cpus awkProcessCU {1} ::: ./results/counts/+([0-9])_${sample}_cU_comb.csv) \
             | pigz -p $cpus > ./results/counts/"$sample"_cU.csv.gz
 
-        rm ./results/counts/*_${sample}_cU_comb.csv
+        rm ./results/counts/+([0-9])_${sample}_cU_comb.csv
 
         echo "Finished mutation position counts processing"
     fi
