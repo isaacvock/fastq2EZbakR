@@ -86,6 +86,7 @@ if not config["bam2bakr"]:
     include: "rules/alignment.smk"
     include: "rules/rsem.smk"
     include: "rules/rsem_plus.smk"
+    include: "rules/multiQC.smk"
 
 
 # include: "rules/salmon.smk"

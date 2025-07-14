@@ -336,6 +336,11 @@ junction_annotation_params: ""
 
 
 
+##### MULTIQC PARAMETERS #####
+
+# Optional parameters to pass to multiQC
+multiqc_extra: ""
+
 
 
 ##############################
