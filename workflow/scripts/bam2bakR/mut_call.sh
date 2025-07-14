@@ -142,7 +142,7 @@ fi
 											  --SNPs "./results/snps/snp.txt" \
                                               --strandedness $strand \
                                               $( if [ "$mutpos" = "True" ]; then echo '--mutPos '; fi ) \
-                                              --reads $format" ::: ./results/counts/*_"$sample"_frag.bam \
+                                              --reads $format" ::: ./results/counts/+([0-9])_"$sample"_frag.bam \
 
 
     echo "** Mutations called for sample $sample"
