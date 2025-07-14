@@ -135,6 +135,7 @@ fi
 
 ## Need to add mutation call script to scripts!
 
+shopt -s extglob # to deal with more specific regex below
 # Call mutations
     parallel -j $cpus "python $mutcnt -b {1} \
                                               --mutType $mut_tracks \
