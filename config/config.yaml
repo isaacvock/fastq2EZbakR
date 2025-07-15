@@ -24,6 +24,9 @@ download_fastqs: False
 sra_accessions: ["SRR24994162", "SRR24994161"]
 
 
+# Providing bam files? If yes, set to True. Will skip all fastq-related steps (trimming, alignment, etc.)
+bam2bakr: False
+
 ## Paths to data to process
 # path to directory containing fastq files if bam2bakr is False
   # fastq files can be either gzipped or unzipped
