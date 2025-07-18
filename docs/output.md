@@ -75,6 +75,10 @@ FastQC:
 
 * fastqc output will be stored in the `results/fastqc/` directory
 
+MultiQC:
+
+* MultiQC output will be stored in the `results/multiqc/` directory. It represents a compilation of FastQC output, as well as STAR alignment stats if you used STAR.
+
 RSEM quantification
 
 * If RSEM is used to quantify isoform abundances, its output will be located in the `results/rsem/` directory.
