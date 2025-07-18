@@ -883,3 +883,22 @@ def get_lowram_merge_input(wildcards):
         )
 
     return MERGE_INPUT
+
+
+##### MULTIQC INPUT ######
+
+MULTIQC_INPUT = expand(
+    "results/fastqc/{sample}_r{read}_fastqc.{ext}",
+    sample=SAMP_NAMES,
+    read=READS,
+    ext=["html", "zip"],
+)
+
+if config.get("aligner") == "star":
+
+    MULTIQC_INPUT.append(
+        expand(
+            "results/align/{sample}-Log.final.out",
+            sample=SAMP_NAMES
+        )
+    )

@@ -1,12 +1,7 @@
 ### Compile all QC into one report
 rule multiqc:
     input:
-        expand(
-            "results/fastqc/{sample}_r{read}_fastqc.{ext}",
-            sample=SAMP_NAMES,
-            read=READS,
-            ext=["html", "zip"],
-        ),
+        MULTIQC_INPUT,
     output:
         "results/multiqc/multiqc_report.html",
     params:
