@@ -98,12 +98,13 @@ if NORMALIZE:
         params:
             rscript=workflow.source_path("../scripts/bam2bakR/normalize.R"),
             spikename=config["spikename"],
+            extra=NORMALIZATION_EXTRA,
         conda:
             "../envs/full.yaml"
         shell:
             r"""
             chmod +x {params.rscript}
-            {params.rscript} --dirs ./results/featurecounts_exons/ --output {output} --spikename {params.spikename} 1> {log} 2>&1
+            {params.rscript} {extra} --output {output} --spikename {params.spikename} 1> {log} 2>&1
             """
 
 else:

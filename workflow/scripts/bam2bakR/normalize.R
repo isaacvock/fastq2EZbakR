@@ -27,7 +27,7 @@ args = commandArgs(trailingOnly = TRUE)
         make_option(c("-e", "--echocode", type="logical"),
                      default = "FALSE",
                      help = 'print R code to stdout'),
-        make_option(c("--use_exon_only"),
+        make_option(c("--use_exons_only"),
                      action = "store_false",
                      default = TRUE,
                      dest= "exon",

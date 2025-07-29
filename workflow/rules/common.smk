@@ -448,6 +448,13 @@ else:
         "results/featurecounts_genes/{sample}.featureCounts", sample=SAMP_NAMES
     )
 
+# Are exons being used?
+if config.get("use_exons_only", True):
+    NORMALIZATION_EXTRA = "--use_exons_only"
+
+else:
+    NORMALIZATION_EXTRA = ""
+
 
 ### FEATURECOUNTS HELPERS
 
