@@ -450,10 +450,10 @@ else:
 
 # Are exons being used?
 if config.get("use_exons_only", True):
-    NORMALIZATION_EXTRA = "--use_exons_only"
+    NORMALIZATION_EXTRA = ""
 
 else:
-    NORMALIZATION_EXTRA = ""
+    NORMALIZATION_EXTRA = "--use_genes"
 
 
 ### FEATURECOUNTS HELPERS

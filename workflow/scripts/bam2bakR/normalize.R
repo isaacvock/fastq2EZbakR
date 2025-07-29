@@ -27,11 +27,11 @@ args = commandArgs(trailingOnly = TRUE)
         make_option(c("-e", "--echocode", type="logical"),
                      default = "FALSE",
                      help = 'print R code to stdout'),
-        make_option(c("--use_exons_only"),
+        make_option(c("--use_genes"),
                      action = "store_false",
                      default = TRUE,
                      dest= "exon",
-                     help = 'print R code to stdout'))
+                     help = 'If included, reads from exons and introns will be used for normalization'))
 
     opt_parser <- OptionParser(option_list = option_list)
     opt <- parse_args(opt_parser) # Load options from command line.
