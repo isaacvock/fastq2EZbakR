@@ -129,6 +129,9 @@ mutpos: False
 # Normalize sequencing tracks?
 normalize: True
 
+# Use genes for normalization
+use_exons_only: False
+
 
 
 # Types of mutations to make tracks for otherwise

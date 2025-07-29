@@ -5,10 +5,10 @@ rule multiqc:
     output:
         "results/multiqc/multiqc_report.html",
     params:
-        extra=config.get("multiqc_extra", "")
+        extra=config.get("multiqc_extra", ""),
     log:
         "logs/multiqc/multiqc.log",
     conda:
-        "../envs/multiqc.yaml",
+        "../envs/multiqc.yaml"
     script:
         "../scripts/multiQC.py"
