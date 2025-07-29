@@ -57,7 +57,7 @@ def get_input_fastqs(wildcards):
             print(f"Sample {wildcards.sample} is single-end.")
 
         paths = [
-            f"results/download_fastq/{wildcards.sample}{read}" for read in SRA_READS
+            f"results/download_fastq/{wildcards.sample} {read}" for read in SRA_READS
         ]
         print(f"Paths: {sorted(paths)}")
         return sorted(paths)
@@ -439,13 +439,14 @@ def get_pold(wildcards):
 
 # What is input for normalization?
 if config.get("use_exons_only", True):
-
-    NORMALIZATION_INPUT = expand("results/featurecounts_exons/{sample}.featureCounts", sample=SAMP_NAMES)
+    NORMALIZATION_INPUT = expand(
+        "results/featurecounts_exons/{sample}.featureCounts", sample=SAMP_NAMES
+    )
 
 else:
-
-    NORMALIZATION_INPUT = expand("results/featurecounts_genes/{sample}.featureCounts", sample=SAMP_NAMES)
- 
+    NORMALIZATION_INPUT = expand(
+        "results/featurecounts_genes/{sample}.featureCounts", sample=SAMP_NAMES
+    )
 
 
 ### FEATURECOUNTS HELPERS
@@ -908,10 +909,6 @@ MULTIQC_INPUT = expand(
 )
 
 if config.get("aligner") == "star":
-
     MULTIQC_INPUT.append(
-        expand(
-            "results/align/{sample}-Log.final.out",
-            sample=SAMP_NAMES
-        )
+        expand("results/align/{sample}-Log.final.out", sample=SAMP_NAMES)
     )
