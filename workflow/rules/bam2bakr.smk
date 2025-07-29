@@ -104,7 +104,7 @@ if NORMALIZE:
         shell:
             r"""
             chmod +x {params.rscript}
-            {params.rscript} {extra} --output {output} --spikename {params.spikename} 1> {log} 2>&1
+            {params.rscript} {params.extra} --output {output} --spikename {params.spikename} 1> {log} 2>&1
             """
 
 else:
