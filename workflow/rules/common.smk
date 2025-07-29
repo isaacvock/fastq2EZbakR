@@ -435,6 +435,19 @@ def get_pold(wildcards):
     return config["polds"][wildcards.sample]
 
 
+### TRACK NORMALIZATION HELPERS
+
+# What is input for normalization?
+if config.get("use_exons_only", True):
+
+    NORMALIZATION_INPUT = expand("results/featurecounts_exons/{sample}.featureCounts", sample=SAMP_NAMES)
+
+else:
+
+    NORMALIZATION_INPUT = expand("results/featurecounts_genes/{sample}.featureCounts", sample=SAMP_NAMES)
+ 
+
+
 ### FEATURECOUNTS HELPERS
 
 

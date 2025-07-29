@@ -26,6 +26,11 @@ args = commandArgs(trailingOnly = TRUE)
                     help = 'File to output scale factors to'),
         make_option(c("-e", "--echocode", type="logical"),
                      default = "FALSE",
+                     help = 'print R code to stdout'),
+        make_option(c("--use_exon_only"),
+                     action = "store_false",
+                     default = TRUE,
+                     dest= "exon",
                      help = 'print R code to stdout'))
 
     opt_parser <- OptionParser(option_list = option_list)
@@ -56,7 +61,11 @@ master <- tibble()
 
 
 # Screw it, going to hardcode directory cause I can
-dirs <- paste0(getwd(), "/results/featurecounts_exons/")
+if(opt$exon){
+    dirs <- paste0(getwd(), "/results/featurecounts_exons/")
+}else{
+    dirs <- paste0(getwd(), "/results/featurecounts_genes/")
+}
 
 # Currently will not work alone due to fact that CORE files also have .featureCounts
 samplefiles <- list.files(path = dirs,

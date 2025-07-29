@@ -89,9 +89,7 @@ if NORMALIZE:
 
     rule normalize:
         input:
-            expand(
-                "results/featurecounts_exons/{sample}.featureCounts", sample=SAMP_NAMES
-            ),
+            NORMALIZATION_INPUT,
         output:
             "results/normalization/scale",
         log:

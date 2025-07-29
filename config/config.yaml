@@ -117,6 +117,23 @@ features:
 
 ####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
 
+# What final output do you want pipeline to create?
+  # cB = standard cB file tracking number of mutations and number of mutable reference nucleotides in each read.
+  # cUP = remove the mutable reference nucleotide count and instead compute the average of this value for reads
+  #         with the same mutational content. This is orders of magnitude more compressed than a cB file (typically
+  #         around 100x smaller), and is still compatible with EZbakR. Downside is the slight information loss that
+  #         this compression leads to.
+  # arrow = Partitioned database of parquet files, in the format necessary to pass to EZbakR.
+  # 
+  # At least one of these should be set to True.
+  # If lowRAM == False, any combination of these can be set to True (including all True).
+  # If lowRAM == True, cB and cUP can not both be true.
+final_output:
+  cB: True
+  cUP: False
+  arrow: False
+
+
 # Types of mutations to make tracks for otherwise
   # Comma separated string of mutation type
   # Examples:
@@ -127,15 +144,21 @@ features:
 mut_tracks: "TC"
 
 
+### Track normalization parameters
+
 # Normalize sequencing tracks?
 normalize: True
-
 
 # String common to spike-in gene_ids in annotation gtf
   # If you have no spike-ins, then this should be "\"\"", i.e., an empty string ("")
   # Used for normalization of tracks. Thus, only relevant if normalize == True
 spikename: "\"\""
 
+# Only use exonic reads for normalization? If not, then all reads mapping to annotated genes will be used
+use_exons_only: True
+
+
+### Miscellaneous parameters
 
 # Skip adapter trimming? 
   # If True, will skip fastp step
@@ -176,22 +199,6 @@ make_tracks: True
   # provided as input
 run_rsem: True
 
-
-# What final output do you want pipeline to create?
-  # cB = standard cB file tracking number of mutations and number of mutable reference nucleotides in each read.
-  # cUP = remove the mutable reference nucleotide count and instead compute the average of this value for reads
-  #         with the same mutational content. This is orders of magnitude more compressed than a cB file (typically
-  #         around 100x smaller), and is still compatible with EZbakR. Downside is the slight information loss that
-  #         this compression leads to.
-  # arrow = Partitioned database of parquet files, in the format necessary to pass to EZbakR.
-  # 
-  # At least one of these should be set to True.
-  # If lowRAM == False, any combination of these can be set to True (including all True).
-  # If lowRAM == True, cB and cUP can not both be true.
-final_output:
-  cB: True
-  cUP: False
-  arrow: False
 
 
 ####### OPTIONAL PARAMETERS FOR THE VARIOUS TOOLS AND SCRIPTS USED #######
