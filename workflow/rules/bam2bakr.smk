@@ -182,18 +182,20 @@ rule cnt_muts:
         strand  = STRAND,
         script  = workflow.source_path("../scripts/bam2bakR/mut_call_refactor.py")
     threads: 32
+    log:
+        "logs/cnt_muts/{sample}.log",
     conda:
         "../envs/full.yaml"
     shell:
         r"""
-        samtools view -h -@ {threads} {input.bam} |
+        samtools view -h -@ {threads} {input.bam} 2>> {log} |
         python {params.script} -b - \
                                -o {output.csv} \
                                --threads {threads} \
                                --minQual {params.minqual} \
                                --SNPs {input.snps} \
                                --reads {params.reads} \
-                               --strandedness {params.strand}
+                               --strandedness {params.strand} 2>> {log}
         """
 
 
@@ -214,7 +216,7 @@ rule cnt_muts_single_nt:
         "results/counts/{sample}_counts.csv.gz",
         temp("results/counts/{sample}_check.txt"),
     log:
-        "logs/cnt_muts/{sample}.log",
+        "logs/cnt_muts_single_nt/{sample}.log",
     threads: 32
     conda:
         "../envs/full.yaml"
