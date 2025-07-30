@@ -168,10 +168,37 @@ rule call_snps:
         """
 
 
-# TO-DO:
-# 1) Add mutation position optimizations and functionality
-# Count mutations
+
+# Refactored mutation counting (maybe more efficient? we'll see)
 rule cnt_muts:
+    input:
+        bam   = "results/sf_reads/{sample}.s.bam",
+        snps  = "results/snps/snp.txt"
+    output:
+        csv   = "results/counts/{sample}_counts.csv.gz"
+    params:
+        minqual = config.get("minqual", 40),
+        reads   = FORMAT,
+        strand  = STRAND,
+        script  = workflow.source_path("../scripts/bam2bakR/mut_call_refactor.py")
+    threads: 32
+    conda:
+        "../envs/full.yaml"
+    shell:
+        r"""
+        samtools view -h -@ {threads} {input.bam} |
+        python {params.script} -b - \
+                               -o {output.csv} \
+                               --threads {threads} \
+                               --minQual {params.minqual} \
+                               --SNPs {input.snps} \
+                               --reads {params.reads} \
+                               --strandedness {params.strand}
+        """
+
+
+# Site-specific mutation counting
+rule cnt_muts_single_nt:
     input:
         "results/sf_reads/{sample}.s.bam",
         "results/snps/snp.txt",
@@ -183,7 +210,6 @@ rule cnt_muts:
         shellscript=workflow.source_path("../scripts/bam2bakR/mut_call.sh"),
         pythonscript=workflow.source_path("../scripts/bam2bakR/mut_call.py"),
         awkscript=workflow.source_path("../scripts/bam2bakR/fragment_sam.awk"),
-        mutpos=config["mutpos"],
     output:
         "results/counts/{sample}_counts.csv.gz",
         temp("results/counts/{sample}_check.txt"),
@@ -197,8 +223,9 @@ rule cnt_muts:
         chmod +x {params.shellscript}
         chmod +x {params.pythonscript}
         chmod +x {params.awkscript}
-        {params.shellscript} {threads} {wildcards.sample} {input} {output} {params.minqual} {params.mut_tracks} {params.format} {params.strand} {params.pythonscript} {params.awkscript} {params.mutpos} 1> {log} 2>&1
+        {params.shellscript} {threads} {wildcards.sample} {input} {output} {params.minqual} {params.mut_tracks} {params.format} {params.strand} {params.pythonscript} {params.awkscript} True 1> {log} 2>&1
         """
+
 
 
 if not config["lowRAM"]:
