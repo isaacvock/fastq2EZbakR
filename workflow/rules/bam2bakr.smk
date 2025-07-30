@@ -213,7 +213,7 @@ rule cnt_muts_single_nt:
         pythonscript=workflow.source_path("../scripts/bam2bakR/mut_call.py"),
         awkscript=workflow.source_path("../scripts/bam2bakR/fragment_sam.awk"),
     output:
-        "results/counts/{sample}_counts.csv.gz",
+        "results/counts/{sample}_cU.csv.gz"
         temp("results/counts/{sample}_check.txt"),
     log:
         "logs/cnt_muts_single_nt/{sample}.log",

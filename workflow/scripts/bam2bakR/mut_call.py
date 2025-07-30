@@ -92,12 +92,6 @@ if args.tracks:
         fs.append(open(f, 'w'))
 
 
-
-#  Set .csv file for writing (simulating _counts.rds file)
-myfile = open(inputName + '_counts.csv', 'w', newline='')
-wr = csv.writer(myfile)
-wr.writerow(header)
-
 # NO LONGER WRITING TO CU AS I ITERATE OVER BAM FILE
 # TO SAVE ON DISK SPACE.
 # # Initialize cU file
@@ -232,7 +226,6 @@ for r in samfile:
         r_info.extend( list(muts.values()) )
         if args.mutPos:
             r_info.extend( [ '|'.join(gmutloc), '|'.join(tp) ] )
-        wr.writerow(r_info)
 
         # Was doing this to save on RAM
         # Realized this inflated disk space usage tremendously

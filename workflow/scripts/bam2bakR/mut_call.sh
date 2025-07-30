@@ -25,36 +25,28 @@ touch "$output2"
 # Infer a decent fragment size
 num_reads=$(samtools view -@ "$cpus" -c "$input")
 
-if [ "$mutpos" = "True" ]; then
+# Get the available RAM in MB and convert it to GB
+available_ram=$(free -m | awk '/^Mem:/{print $7}') # Memory in MB
+available_ram=$(echo "$available_ram / 1024" | bc) # Convert to GB
 
-    # Get the available RAM in MB and convert it to GB
-    available_ram=$(free -m | awk '/^Mem:/{print $7}') # Memory in MB
-    available_ram=$(echo "$available_ram / 1024" | bc) # Convert to GB
-
-    # Calculate fragment_size
-        # 20 million reads use roughly 1 TB of RAM in mutation counting
-        # script when mutpos is True, so plan accordingly
-    fragment_size_ram_based=$(echo "scale=0; $available_ram / ($cpus * 0.00025)" | bc)
+# Calculate fragment_size
+    # 20 million reads use roughly 1 TB of RAM in mutation counting
+    # script when mutpos is True, so plan accordingly
+fragment_size_ram_based=$(echo "scale=0; $available_ram / ($cpus * 0.00025)" | bc)
 
 
-    # Calculate fragment_size based on number_of_reads and CPUs
-    fragment_size_read_based=$(echo "scale=0; $num_reads / $cpus" | bc)
+# Calculate fragment_size based on number_of_reads and CPUs
+fragment_size_read_based=$(echo "scale=0; $num_reads / $cpus" | bc)
 
-    # Choose the minimum of the two calculated fragment sizes
-    if [ $fragment_size_ram_based -lt $fragment_size_read_based ]; then
+# Choose the minimum of the two calculated fragment sizes
+if [ $fragment_size_ram_based -lt $fragment_size_read_based ]; then
 
-        fragment_size=$fragment_size_ram_based
-
-    else
-
-        fragment_size=$fragment_size_read_based
-        
-    fi
+    fragment_size=$fragment_size_ram_based
 
 else
 
-    fragment_size=$(echo "scale=0; $num_reads/$cpus" | bc)
-
+    fragment_size=$fragment_size_read_based
+    
 fi
 
 # Make sure fragment size isn't 0, though if it were, you probably have bigger problems on your hand...
@@ -94,37 +86,18 @@ fi
     # If running mutation position counting, get bam file roughly coordinate sorted to 
     # try and get all reads covering a particular base close together, so as to reduce
     # disk space and RAM usage when running the mutation counting script.
-if [ "$mutpos" = "True" ]; then
+samtools sort -@ "$cpus" "$input" | samtools sort -n -@ "$cpus" - | samtools view - \
+    | awk \
+        -v fragment_size="$newFragmentSize" \
+        -v sample="$sample" \
+        -f "$awkscript" &&
 
-    samtools sort -@ "$cpus" "$input" | samtools sort -n -@ "$cpus" - | samtools view - \
-    	| awk \
-    		-v fragment_size="$newFragmentSize" \
-    		-v sample="$sample" \
-    		-f "$awkscript" &&
+for f in $(seq 1 $newFragmentNumber); do
+    samtools view -@ "$cpus" -o ./results/counts/"$f"_"$sample"_frag.bam ./results/counts/"$f"_"$sample".sam
+    rm ./results/counts/"$f"_"$sample".sam
+done &&
 
-    for f in $(seq 1 $newFragmentNumber); do
-        samtools view -@ "$cpus" -o ./results/counts/"$f"_"$sample"_frag.bam ./results/counts/"$f"_"$sample".sam
-        rm ./results/counts/"$f"_"$sample".sam
-    done &&
-
-    echo "* Aligned .sam file fragmented for sample $sample"
-
-else
-
-    samtools view "$input" \
-    	| awk \
-    		-v fragment_size="$newFragmentSize" \
-    		-v sample="$sample" \
-    		-f "$awkscript" &&
-
-    for f in $(seq 1 $newFragmentNumber); do
-        samtools view -@ "$cpus" -o ./results/counts/"$f"_"$sample"_frag.bam ./results/counts/"$f"_"$sample".sam
-        rm ./results/counts/"$f"_"$sample".sam
-    done &&
-
-    echo "* Aligned .sam file fragmented for sample $sample"
-
-fi
+echo "* Aligned .sam file fragmented for sample $sample"
 
 # remove any remaining sam files:
 
@@ -142,24 +115,11 @@ shopt -s extglob # to deal with more specific regex below
                                               --minQual $minqual \
 											  --SNPs "./results/snps/snp.txt" \
                                               --strandedness $strand \
-                                              $( if [ "$mutpos" = "True" ]; then echo '--mutPos '; fi ) \
+                                              --mutPos \
                                               --reads $format" ::: ./results/counts/+([0-9])_"$sample"_frag.bam \
 
 
     echo "** Mutations called for sample $sample"
-
-
-# Combine output from fragments into single file
-    # 1) _count.csv files
-    awk 'FNR > 1 || NR == 1' ./results/counts/+([0-9])_"$sample"_frag_counts.csv \
-        | pigz -p $cpus > "$output"
-
-    rm ./results/counts/+([0-9])_"$sample"_frag_counts.csv
-
-
-
-    echo "** Results fragments merged into final files"
-
 
 
 	rm -f ./results/counts/+([0-9])_"$sample"_frag.bam
@@ -167,84 +127,79 @@ shopt -s extglob # to deal with more specific regex below
 	echo '* Cleaning up fragmented .bam files'
 
 
-    # 2) _cU.csv files
-    if [ "$mutpos" = "True" ]; then
+    # Pre-sort cU fragments
+    parallel -j $cpus "tail -n +2 {1} \
+                            | LC_COLLATE=C sort > {1.}_sort.csv" ::: ./results/counts/+([0-9])_"$sample"_frag_cU.csv
+    rm ./results/counts/+([0-9])_"$sample"_frag_cU.csv                    
 
+    # Combine pre-sorted fragments
+    LC_COLLATE=C sort -m ./results/counts/+([0-9])_"$sample"_frag_cU_sort.csv > ./results/counts/"$sample"_cU_comb.csv 
+    rm ./results/counts/+([0-9])_"$sample"_frag_cU_sort.csv
 
-        # Pre-sort cU fragments
-        parallel -j $cpus "tail -n +2 {1} \
-                                | LC_COLLATE=C sort > {1.}_sort.csv" ::: ./results/counts/+([0-9])_"$sample"_frag_cU.csv
-        rm ./results/counts/+([0-9])_"$sample"_frag_cU.csv                    
+    # Get ammount of data
+    cUsize=$(wc -l ./results/counts/"$sample"_cU_comb.csv | cut -d ' ' -f 1)
 
-        # Combine pre-sorted fragments
-        LC_COLLATE=C sort -m ./results/counts/+([0-9])_"$sample"_frag_cU_sort.csv > ./results/counts/"$sample"_cU_comb.csv 
-        rm ./results/counts/+([0-9])_"$sample"_frag_cU_sort.csv
-
-        # Get ammount of data
-        cUsize=$(wc -l ./results/counts/"$sample"_cU_comb.csv | cut -d ' ' -f 1)
-
-        # Split file to sorted fragments keeping the same position groups in the same file fragment 
-        awk -v FS="," \
-            -v cpus=$cpus \
-            -v cUsize=$cUsize \
-            -v sample=$sample \
-            'BEGIN { 
-                    fragment_size = int(cUsize / cpus) + 1
-                    i = 1
-            }
-            NR == (fragment_size * i - 1 ) { x = $1","$2 } 
-
-            NR < (fragment_size * i ) { print >> "./results/counts/"i"_"sample"_cU_comb.csv" }
-
-            NR >= (fragment_size * i ) { if ($1","$2 == x) 
-                                            { 
-                                                print >> "./results/counts/"i"_"sample"_cU_comb.csv"
-                                            } 
-                                        else 
-                                            {           
-                                                i++
-                                                print >> "./results/counts/"i"_"sample"_cU_comb.csv"
-                                            }
-                
-            }' ./results/counts/"$sample"_cU_comb.csv
-
-        rm ./results/counts/"$sample"_cU_comb.csv
-
-        # Awk script for processing sorted cU files; assumes all same positions are grouped together in subsequent lines
-            # Thanks to this we have to keep in memory only one genomic position at given time
-        function awkProcessCU () {
-            awk -v FS="," 'NR == 1 {
-                        nuc = $1":"$2
-                }
-                $1":"$2 != nuc {
-                        for (pos in trial) {
-                            if (n[pos] >= 0)
-                                print pos","trial[pos]","n[pos]
-                        }
-                        delete trial
-                        delete n
-                        nuc = $1":"$2
-                }
-                $1":"$2 == nuc {
-                        trial[$1","$2","$3] += $4
-                        n[$1","$2","$3] += $5
-                }
-                END {
-                        for (pos in trial) {
-                            if (n[pos] >= 0)
-                                print pos","trial[pos]","n[pos]
-                        }
-                }' $1
+    # Split file to sorted fragments keeping the same position groups in the same file fragment 
+    awk -v FS="," \
+        -v cpus=$cpus \
+        -v cUsize=$cUsize \
+        -v sample=$sample \
+        'BEGIN { 
+                fragment_size = int(cUsize / cpus) + 1
+                i = 1
         }
+        NR == (fragment_size * i - 1 ) { x = $1","$2 } 
 
-        export -f awkProcessCU
+        NR < (fragment_size * i ) { print >> "./results/counts/"i"_"sample"_cU_comb.csv" }
 
-        # Add header and process sorted fragments in parallel
-        cat <(echo "rname,gloc,tp,trials,n") \
-            <(parallel -j $cpus awkProcessCU {1} ::: ./results/counts/+([0-9])_${sample}_cU_comb.csv) \
-            | pigz -p $cpus > ./results/counts/"$sample"_cU.csv.gz
+        NR >= (fragment_size * i ) { if ($1","$2 == x) 
+                                        { 
+                                            print >> "./results/counts/"i"_"sample"_cU_comb.csv"
+                                        } 
+                                    else 
+                                        {           
+                                            i++
+                                            print >> "./results/counts/"i"_"sample"_cU_comb.csv"
+                                        }
+            
+        }' ./results/counts/"$sample"_cU_comb.csv
 
-        rm ./results/counts/+([0-9])_${sample}_cU_comb.csv
+    rm ./results/counts/"$sample"_cU_comb.csv
 
-        echo "Finished mutation position counts processing"
-    fi
+    # Awk script for processing sorted cU files; assumes all same positions are grouped together in subsequent lines
+        # Thanks to this we have to keep in memory only one genomic position at given time
+    function awkProcessCU () {
+        awk -v FS="," 'NR == 1 {
+                    nuc = $1":"$2
+            }
+            $1":"$2 != nuc {
+                    for (pos in trial) {
+                        if (n[pos] >= 0)
+                            print pos","trial[pos]","n[pos]
+                    }
+                    delete trial
+                    delete n
+                    nuc = $1":"$2
+            }
+            $1":"$2 == nuc {
+                    trial[$1","$2","$3] += $4
+                    n[$1","$2","$3] += $5
+            }
+            END {
+                    for (pos in trial) {
+                        if (n[pos] >= 0)
+                            print pos","trial[pos]","n[pos]
+                    }
+            }' $1
+    }
+
+    export -f awkProcessCU
+
+    # Add header and process sorted fragments in parallel
+    cat <(echo "rname,gloc,tp,trials,n") \
+        <(parallel -j $cpus awkProcessCU {1} ::: ./results/counts/+([0-9])_${sample}_cU_comb.csv) \
+        | pigz -p $cpus > ./results/counts/"$sample"_cU.csv.gz
+
+    rm ./results/counts/+([0-9])_${sample}_cU_comb.csv
+
+    echo "Finished mutation position counts processing"
