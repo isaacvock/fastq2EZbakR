@@ -14,7 +14,8 @@ parser = argparse.ArgumentParser(
 requiredNamed = parser.add_argument_group('required named arguments')
 requiredNamed.add_argument('-b', '--bam', type=str, required=True,
                            metavar='in_file.bam', help='Bam file to process')
-
+parser.add_argument("-o", "--output", required=True,
+                   help="gzip‑compressed per‑read CSV")
 parser.add_argument('--threads', default=1, type=int, metavar='<int>',    # NEW
                     help='BGZF decompression threads (default: 1)')
 parser.add_argument('--reads', default='PE', type=str, choices=['PE', 'SE'],
@@ -72,7 +73,7 @@ for line in snpFile:
 # ------------------------------------------------------------------
 # (3) Write gzip directly – output file now ends in .csv.gz
 # ------------------------------------------------------------------
-with gzip.open(f"{inputName}_counts.csv.gz", 'wt', newline='') as myfile:
+with gzip.open(args.output, "wt", newline="") as myfile:
     wr = csv.writer(myfile)
     wr.writerow(header)
 
