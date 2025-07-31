@@ -32,8 +32,6 @@ parser.add_argument('--mutPos', action='store_true',                    # kept
                     help='Output per‑mutation position columns')
 args = parser.parse_args()
 
-inputName = args.bam.split('.bam')[0]           # name without .bam suffix
-
 strand_check = True if args.strandedness == 'F' else False
 
 # ------------------------------------------------------------------
