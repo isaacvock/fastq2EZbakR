@@ -257,12 +257,12 @@ feat_catalogue <- list(
               COALESCE(sj.junction_end,   '__no_feature') AS junction_end",
     join   = "LEFT JOIN starjunc      sj USING (qname)"
   ),
-  transcripts = list(
+  eej = list(
     flag   = "eej",                                
     select = "COALESCE(eej.ee_junction_id, '__no_feature') AS ee_junction_id",
     join   = "LEFT JOIN eej   eej  USING (qname)"
   ),
-  transcripts = list(
+  eij = list(
     flag   = "eij",                                
     select = "COALESCE(t.ei_junction_id, '__no_feature') AS ei_junction_id",
     join   = "LEFT JOIN eij   eij  USING (qname)"
