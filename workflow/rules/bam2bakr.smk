@@ -235,7 +235,7 @@ if not config["lowRAM"]:
             makeArrow=config["final_output"]["arrow"],
         log:
             "logs/merge_features_and_muts/{sample}.log",
-        threads: 8
+        threads: 32
         conda:
             "../envs/merge.yaml"
         shell:
