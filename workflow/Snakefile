@@ -13,6 +13,7 @@ configfile: "config/config.yaml"
 
 ##### Impute potentially missing config parameters for backwards compatibiltiy #####
 
+# Dumb way to do this, need to refactor to just use config.get() everywhere
 if "lowRAM" not in config:
     config["lowRAM"] = False
 

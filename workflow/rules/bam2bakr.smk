@@ -233,6 +233,7 @@ if not config["lowRAM"]:
             makecB=config["final_output"]["cB"],
             makecUP=config["final_output"]["cUP"],
             makeArrow=config["final_output"]["arrow"],
+            MaxMem=config.get("max_merge_mem", "8G"),
         log:
             "logs/merge_features_and_muts/{sample}.log",
         threads: 32
@@ -247,7 +248,7 @@ if not config["lowRAM"]:
             -j {params.eej_included} --starjunc {params.starjunc_included} --eij {params.eij_included} \
             --annotation {params.annotation} -c {output.cBout} -m {params.muttypes} \
             --makecB {params.makecB} --makecUP {params.makecUP} --makeArrow {params.makeArrow} \
-            --cUPout {output.cUPout} --Arrowout {output.Arrowout} 1> {log} 2>&1
+            --cUPout {output.cUPout} --Arrowout {output.Arrowout} --MaxMem {params.MaxMem} 1> {log} 2>&1
             """
 
 
