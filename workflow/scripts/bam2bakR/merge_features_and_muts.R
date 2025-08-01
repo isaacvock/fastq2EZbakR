@@ -264,7 +264,7 @@ feat_catalogue <- list(
   ),
   eij = list(
     flag   = "eij",                                
-    select = "COALESCE(t.ei_junction_id, '__no_feature') AS ei_junction_id",
+    select = "COALESCE(eij.ei_junction_id, '__no_feature') AS ei_junction_id",
     join   = "LEFT JOIN eij   eij  USING (qname)"
   )
 )
