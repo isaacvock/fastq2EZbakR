@@ -342,11 +342,11 @@ if(opt$makecB){
 
 if(opt$makeArrow){
   
-  dir.create(dirname(opt$ArrowOutput), showWarnings = FALSE)
+  dir.create(dirname(opt$Arrowoutput), showWarnings = FALSE)
   
   # 2b → Parquet
   dbExecute(con, glue("
-    COPY cB TO '{opt$ArrowOutput}' (FORMAT PARQUET);
+    COPY cB TO '{opt$Arrowoutput}' (FORMAT PARQUET);
   "))
   
   
