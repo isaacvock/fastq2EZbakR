@@ -5,14 +5,14 @@
 # Load dependencies ------------------------------------------------------------
 
 library(optparse)
-library(data.table)
-library(readr)
-library(rtracklayer)
-library(tidyr)
+library(duckdb)
+library(DBI)
+library(glue)
 library(dplyr)
-library(arrow)
+library(utils)
 
-# Process parameters -----------------------------------------------------------
+
+# Process CLI options ----------------------------------------------------------
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -67,52 +67,76 @@ option_list <- list(
   make_option(c("--cUPoutput", type = "character"),
               help = "Path to cUP output; same as full output with some columns averaged out."),
   make_option(c("--Arrowoutput", type = "character"),
-              help = "Path to arrow parquet file output; same as full output with some columns averaged out.")
+              help = "Path to arrow parquet file output; same as full output with some columns averaged out."),
+  make_option(c("--MaxMem", type = "character"),
+              default = "8GB",
+              help = "Max RAM usage to (mostly) enforce in DuckDB")
 )
 
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser) # Load options from command line.
+# 
+# opt <- list(
+#   genes = TRUE,
+#   exons = TRUE,
+#   exonbins = TRUE,
+#   frombam = TRUE,
+#   starjunc = TRUE,
+#   eej = FALSE,
+#   eij = FALSE,
+#   output = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/new_output_test.csv.gz",
+#   cBoutput = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/new_cB_test.csv.gz",
+#   muttypes = "TC",
+#   sample = "DMSO_8hr_1",
+#   makecB = TRUE,
+#   makecUP = TRUE,
+#   makeArrow = TRUE,
+#   cUPout = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/new_cUP_test.csv.gz",
+#   ArrowOutput = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/sample=DMSO_8hr_1/new_cB_test.parquet"
+# )
 
 
-# Combine tables --------------------------------------------------------------
-
-sample <- paste0("^", opt$sample, "_counts")
-
-print(paste0("sample is: ", opt$sample))
+# DuckDB strategy --------------------------------------------------------------
 
 
-### Load mutation counts
-muts_file <- list.files(path = "./results/counts/",
-                        pattern = sample,
-                        full.names = TRUE)[1]
+dir.create("duckdb", showWarnings = FALSE)
+con <- dbConnect(duckdb(), dbdir = glue("./duckdb/{opt$sample}.duckdb"), read_only = FALSE)
+dbExecute(con, glue("SET memory_limit='{opt$MaxMem}';"))
 
-muts <- fread(muts_file)
 
-setkey(muts, qname)
+register_feat <- function(view, path, feat_col)
+{
+  sql <- glue("
+    CREATE OR REPLACE VIEW {`view`} AS
+      SELECT qname,
+             REPLACE({feat_col}, ',', '+') AS {feat_col}
+      FROM read_csv_auto('{path}',
+                         header = FALSE,
+                         delim  = '\t', 
+                         columns = {{'qname':'VARCHAR', 'status':'VARCHAR', 'nhits':'INT', '{feat_col}':'VARCHAR'}})
+      WHERE nhits > 0;
+  ")
+  dbExecute(con, sql)
+}
+
+
+#### "Load" mutation counts ####
+
+dbExecute(con, glue("
+  CREATE OR REPLACE VIEW muts AS
+    SELECT * FROM read_csv_auto(
+      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE);
+"))
+
+
+#### "Load" feature tables ####
 
 feature_vect <- c()
 
-# merge with gene assignments
+
 if(opt$genes){
   
-  sample <- paste0("^", opt$sample, ".s.bam.featureCounts")
-  
-  genes_file <- list.files("./results/featurecounts_genes/",
-                           pattern = sample, full.names = TRUE)[1]
-  
-  genes <- fread(genes_file)
-  
-  colnames(genes) <- c("qname", "status", "nhits", "GF")
-  
-  genes <- genes[ nhits > 0 , c("qname", "GF")]
-  
-  genes[, GF := gsub(",", "+", GF)]
-
-  setkey(genes, qname)
-  
-  muts <- genes[muts]
-
-  muts[, GF := ifelse(is.na(GF), "__no_feature", GF)]
+  register_feat("genes", glue("./results/featurecounts_genes/{opt$sample}.s.bam.featureCounts"), "GF")
   
   feature_vect <- c(feature_vect, "GF")
   
@@ -120,344 +144,234 @@ if(opt$genes){
 
 
 if(opt$frombam){
-
-  sample <- paste0("^", opt$sample, ".csv")
   
-  transcripts_file <- list.files("./results/read_to_transcripts/",
-                              pattern = sample, full.names = TRUE)[1]
-  
-  transcripts <- fread(transcripts_file)
-  
-  colnames(transcripts) <- c("qname", "TEC")
-  
-  
-  transcripts <- transcripts[ , c("qname", "TEC")]  
-  
-  setkey(transcripts, qname)
-
-  muts <- transcripts[muts]
-
-  muts[, TEC := ifelse(is.na(TEC), "__no_feature", TEC)]
-
-
-  ##### Better to just use RSEM's bam file if I can to filter out 0 probability isoforms
-  # if(opt$genes){
-  #   ### Filter out incorrectly assigned isoforms
-  #   ### due to STAR assigning read to isoform on oppposite
-  #   ### strand.
-  #   ### Idea is that featureCount's gene assignment correctly
-  #   ### assigns the gene, so the annotation can be used to determine
-  #   ### the set of isoforms that are legit.
-
-  #   # Table of set of isoforms from each gene
-  #   gene2transcript <- rtracklayer::import(opt$annotation) %>% 
-  #     dplyr::as_tibble() %>%
-  #     dplyr::filter(type == "transcript") %>%
-  #     dplyr::select(gene_id, transcript_id) %>%
-  #     dplyr::distinct() %>%
-  #     dplyr::rename(GF = gene_id)
-
-  #   setDT(gene2transcript)
-  #   setkey(gene2transcript, GF, transcript_id)
-
-  #   # Unique set of TEC and GF combos
-  #   current_assignments <- muts %>%
-  #     dplyr::select(GF, TEC) %>%
-  #     dplyr::distinct() %>%
-  #     dplyr::mutate(transcript_id = TEC) %>% 
-  #     tidyr::separate_rows(transcript_id, sep = "\\+")
-
-
-  #   setDT(current_assignments)
-  #   setkey(current_assignments, GF, transcript_id)
-
-  #   current_assignments <- current_assignments[gene2transcript, nomatch = NULL] %>%
-  #     dplyr::group_by(GF, TEC) %>%
-  #     dplyr::summarise(new_bft = paste(transcript_id, collapse="+")) %>%
-  #     dplyr::bind_rows(
-  #       tibble(
-  #         GF = unique(muts$GF),
-  #         TEC = "__no_feature",
-  #         new_bft = "__no_feature"
-  #       )
-  #     )
-
-  #   if(nrow(current_assignments) == 0){
-  #     stop("Something went wrong, current_assignments is empty!")
-  #   }
-
-  #   setDT(current_assignments)
-  #   setkey(current_assignments, GF, TEC)
-  #   setkey(muts, GF, TEC)
-
-  #   muts <- muts[current_assignments, nomatch = NULL]
-
-  #   if(nrow(current_assignments) == 0){
-  #     stop("Something went wrong, muts is empty!")
-  #   }
-
-  #   muts[, TEC := new_bft]
-  #   muts[, new_bft := NULL]
-
-  #   setkey(muts, qname)
-
-  # }
-
+  dbExecute(con, glue("
+  CREATE OR REPLACE VIEW transcripts AS
+    SELECT qname,
+           bamfile_transcripts
+    FROM read_csv_auto(
+      './results/read_to_transcripts/{opt$sample}.csv', header = TRUE);
+  "))
   
   feature_vect <- c(feature_vect, "TEC")
-
 }
 
 
-# merge with exon assignments
 if(opt$exons){
   
-  sample <- paste0("^", opt$sample, ".s.bam.featureCounts")
-  
-  exons_file <- list.files("./results/featurecounts_exons/",
-                           pattern = sample, full.names = TRUE)[1]
-  
-  exons <- fread(exons_file)
-  
-  colnames(exons) <- c("qname", "status", "nhits", "XF")
-  
-  exons <- exons[ nhits > 0 , c("qname", "XF")]
-  
-  exons[, XF := gsub(",", "+", XF)]
-  
-  setkey(exons, qname)
-
-  muts <- exons[muts]
-
-  muts[, XF := ifelse(is.na(XF), "__no_feature", XF)]
-
+  register_feat("exons", glue("./results/featurecounts_exons/{opt$sample}.s.bam.featureCounts"), "XF")
   
   feature_vect <- c(feature_vect, "XF")
-
+  
 }
 
 
-# Merge with exonbin assignments
 if(opt$exonbins){
   
-  sample <- paste0("^", opt$sample, ".s.bam.featureCounts")
-  
-  exonbins_file <- list.files("./results/featurecounts_exonbins/",
-                           pattern = sample, full.names = TRUE)[1]
-  
-  exonbins <- fread(exonbins_file)
-  
-  colnames(exonbins) <- c("qname", "status", "nhits", "exon_bin")
-  
-  
-  exonbins <- exonbins[ nhits > 0 , c("qname", "exon_bin")]
-  
-  
-  exonbins[, exon_bin := gsub(",", "+", exon_bin)]
-  
-  setkey(exonbins, qname)
-
-  muts <- exonbins[muts]
-
-  muts[, exon_bin := ifelse(is.na(exon_bin), "__no_feature", exon_bin)]
-
+  register_feat("ebs", glue("results/featurecounts_exonbins/{opt$sample}.s.bam.featureCounts"), "exon_bin")
   
   feature_vect <- c(feature_vect, "exon_bin")
-
-}
-
-
-# Merge with transcript assignments
-if(opt$transcripts){
-  
-  sample <- paste0("^", opt$sample, ".s.bam.featureCounts")
-  
-  transcripts_file <- list.files("./results/featurecounts_transcripts/",
-                              pattern = sample, full.names = TRUE)[1]
-  
-  transcripts <- fread(transcripts_file)
-  
-  colnames(transcripts) <- c("qname", "status", "nhits", "transcripts")
-  
-  
-  transcripts <- transcripts[ nhits > 0 , c("qname", "transcripts")]
-  
-  transcripts[, transcripts := gsub(",", "+", transcripts)]
-  
-  setkey(transcripts, qname)
-  
-  muts <- transcripts[muts]
-
-  muts[, transcripts := ifelse(is.na(transcripts), "__no_feature", transcripts)]
-
-  
-  feature_vect <- c(feature_vect, "transcripts")
-
   
 }
 
-
-# Exon-exon junction assignment
 if(opt$eej){
   
-  sample <- paste0("^", opt$sample, ".s.bam.featureCounts")
+  register_feat("eej", glue("C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/tables/exon_bins.tsv.gz"), "ee_junction_id")
   
-  transcripts_file <- list.files("./results/featurecounts_eej/",
-                              pattern = sample, full.names = TRUE)[1]
-  
-  transcripts <- fread(transcripts_file)
-  
-  colnames(transcripts) <- c("qname", "status", "nhits", "ee_junction_id")
-  
-  
-  transcripts <- transcripts[ nhits > 0 , c("qname", "ee_junction_id")]
-  
-  transcripts[, ee_junction_id := gsub(",", "+", ee_junction_id)]
-  
-  setkey(transcripts, qname)
-  
-  muts <- transcripts[muts]
-  
-  muts[, ee_junction_id := ifelse(is.na(ee_junction_id), "__no_feature", ee_junction_id)]
-
   feature_vect <- c(feature_vect, "ee_junction_id")
-
   
 }
 
-
-# Exon-intron junction assignment
 if(opt$eij){
   
-  sample <- paste0("^", opt$sample, ".s.bam.featureCounts")
+  register_feat("eij", glue("C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/tables/exon_bins.tsv.gz"), "ei_junction_id")
   
-  transcripts_file <- list.files("./results/featurecounts_eij/",
-                              pattern = sample, full.names = TRUE)[1]
-  
-  transcripts <- fread(transcripts_file)
-  
-  colnames(transcripts) <- c("qname", "status", "nhits", "ei_junction_id")
-  
-  
-  transcripts <- transcripts[ nhits > 0 , c("qname", "ei_junction_id")]
-  
-  transcripts[, ei_junction_id := gsub(",", "+", ei_junction_id)]
-  
-  setkey(transcripts, qname)
-  
-  muts <- transcripts[muts]
-  
-  muts[, ei_junction_id := ifelse(is.na(ei_junction_id), "__no_feature", ei_junction_id)]
-
   feature_vect <- c(feature_vect, "ei_junction_id")
-
   
 }
 
 
-# STAR junction assignment
 if(opt$starjunc){
   
-  sample <- paste0("^", opt$sample, ".csv.gz")
+  dbExecute(con, glue("
+  CREATE OR REPLACE VIEW starjunc AS
+    SELECT qname,
+           junction_start,
+           junction_end
+    FROM read_csv_auto(
+      'results/read_to_junctions/{opt$sample}.csv.gz', header = TRUE);
+  "))
   
-  transcripts_file <- list.files("./results/read_to_junctions/",
-                              pattern = sample, full.names = TRUE)[1]
-  
-
-  message("File is:")
-  print(transcripts_file)
-
-  message("file looks like:")
-
-  transcripts <- fread(transcripts_file)
-  
-  print(head(transcripts))
-
-  colnames(transcripts) <- c("qname", "junction_start", "junction_end")
-    
-  message("file looks like:")
-
-
-  setkey(transcripts, qname)
-  
-  print(head(transcripts))
-
-
-  muts <- transcripts[muts]
-  
-  muts[, junction_start := ifelse(is.na(junction_start), "__no_feature", junction_start)]
-  muts[, junction_end := ifelse(is.na(junction_end), "__no_feature", junction_end)]
-
-
   feature_vect <- c(feature_vect, "junction_start", "junction_end")
+  
+}
 
+#### Construct query ####
+
+feat_catalogue <- list(
+  genes = list(
+    flag   = "genes",
+    select = "COALESCE(g.GF,        '__no_feature') AS GF",
+    join   = "LEFT JOIN genes        g  USING (qname)"
+  ),
+  exons = list(
+    flag   = "exons",
+    select = "COALESCE(e.XF,        '__no_feature') AS XF",
+    join   = "LEFT JOIN exons        e  USING (qname)"
+  ),
+  exonbins = list(
+    flag   = "exonbins",
+    select = "COALESCE(eb.exon_bin, '__no_feature') AS exon_bin",
+    join   = "LEFT JOIN exonbins     eb USING (qname)"
+  ),
+  transcripts = list(
+    flag   = "frombam",                                # because opt$frombam
+    select = "COALESCE(t.bamfile_transcripts, '__no_feature') AS TEC",
+    join   = "LEFT JOIN transcripts   t  USING (qname)"
+  ),
+  starjunc = list(
+    flag   = "starjunc",
+    select = "COALESCE(sj.junction_start, '__no_feature') AS junction_start,
+              COALESCE(sj.junction_end,   '__no_feature') AS junction_end",
+    join   = "LEFT JOIN starjunc      sj USING (qname)"
+  ),
+  transcripts = list(
+    flag   = "eej",                                
+    select = "COALESCE(eej.ee_junction_id, '__no_feature') AS ee_junction_id",
+    join   = "LEFT JOIN eej   eej  USING (qname)"
+  ),
+  transcripts = list(
+    flag   = "eij",                                
+    select = "COALESCE(t.ei_junction_id, '__no_feature') AS ei_junction_id",
+    join   = "LEFT JOIN eij   eij  USING (qname)"
+  )
+)
+
+
+select_fragments <- c("m.*")   # always start with all mutation columns
+join_fragments   <- character()
+
+for (feat in feat_catalogue) {
+  if (isTRUE(opt[[feat$flag]])) {
+    select_fragments <- c(select_fragments, feat$select)
+    join_fragments   <- c(join_fragments,   feat$join)
+  }
 }
 
 
-# Write to final output
-write_csv(muts,
-          file = opt$output)
+
+#### LEFT JOIN ####
+
+sql <- glue("
+  CREATE OR REPLACE TABLE merged AS
+  SELECT {paste(select_fragments, collapse = ',\n         ')}
+  FROM   muts m
+  {paste(join_fragments, collapse = '\n  ')}
+;")
+
+# Print for debugging
+cat(sql)
+
+dbExecute(con, sql)
 
 
-##### MAKE CB
+#### cB table creation ####
+mut_cols  <- strsplit(opt$muttypes, ",")[[1]]
+base_cols <- paste0('n', substr(mut_cols, 1, 1))
+feature_cols <- feature_vect
 
-muts_to_keep <- unlist(strsplit(opt$muttypes, ","))
-bases_to_keep <- paste0("n", substr(muts_to_keep, start = 1, stop = 1))
 
-cols_to_keep <- c("sample", "rname", feature_vect, muts_to_keep, bases_to_keep, "sj")
+if(opt$makecB | opt$makeArrow){
+  
+  # Create summarized cB
+  dbExecute(con, glue("
+  CREATE OR REPLACE TABLE cB AS
+    SELECT 'opt$sample'      AS sample,
+           rname, sj, {paste(feature_cols, collapse = ',')},
+           {paste(mut_cols, collapse = ',')},
+           {paste(base_cols, collapse = ',')},
+           COUNT(*)            AS n
+    FROM   merged
+    GROUP  BY ALL;
+  "))
+  
+}
 
-muts[, sample := opt$sample]
 
-print("cols_to_keep looks like:")
-print(cols_to_keep)
-
-muts <- muts[, .(n = .N), by = cols_to_keep]
-
+#### Write to cB ####
 
 if(opt$makecB){
-
-  write_csv(muts,
-            file = opt$cBoutput)
-
+  
+  dir.create(dirname(opt$cBoutput), showWarnings = FALSE)
+    
+  # Write to csv
+  dbExecute(con, glue("
+    COPY cB TO '{opt$cBoutput}' (FORMAT CSV, HEADER 1);
+  "))
+  
+    
 }else{
-
-  write_csv(tibble(),
+  
+  write.csv(tibble(),
             file = opt$cBoutput)
-
+  
 }
 
-if(opt$makecUP){
 
-  # Thankfully, already solved this problem in EZbakR, so just copying that solution
-  cols_to_group_pois <- c("sample", "rname", feature_vect, muts_to_keep, "sj")
-  cols_to_avg <- bases_to_keep
-
-  cUP <- muts[, c(lapply(.SD, function(x) sum(x*n)/sum(n) ),
-                     .(n = sum(n))),
-                 by = cols_to_group_pois, .SDcols = cols_to_avg]
-
-
-
-  write_csv(cUP,
-            file = opt$cUPoutput)
-
-}else{
-
-  write_csv(tibble(),
-            file = opt$cUPoutput)
-
-}
-
+#### Write to arrow dataset ####
 
 if(opt$makeArrow){
-
-  write_parquet(muts,
-                opt$Arrowoutput)
-
+  
+  dir.create(dirname(opt$ArrowOutput), showWarnings = FALSE)
+  
+  # 2b → Parquet
+  dbExecute(con, glue("
+    COPY cB TO '{opt$ArrowOutput}' (FORMAT PARQUET);
+  "))
+  
+  
 }else{
-
-  write_parquet(tibble(),
+  
+  write.csv(tibble(),
                 opt$Arrowoutput)
-
+  
 }
+
+
+#### Write to cUP ####
+
+if(opt$makecUP){
+  
+  group_cols        <- c("rname", feature_cols, mut_cols)   # columns to GROUP BY
+  group_by_clause   <- paste(group_cols, collapse = ", ")
+  
+  avg_fragments     <- paste(sprintf("AVG(%s) AS %s", base_cols, base_cols),
+                             collapse = ",\n           ")
+  
+  select_clause <- glue("
+    '{opt$sample}' AS sample,
+    {paste(group_cols, collapse = ', ')},
+    {avg_fragments},
+    COUNT(*) AS n
+  ")
+  
+  # Create summarized cUP
+  dbExecute(con, glue("
+    CREATE OR REPLACE TABLE cB AS
+    SELECT {select_clause}
+    FROM   merged
+    GROUP  BY {group_by_clause};
+  "))
+  
+}else{
+  
+  write.csv(
+    tibble(),
+    file = opt$cUPoutput
+  )
+  
+}
+
+
+dbDisconnect(con, shutdown = TRUE)
 

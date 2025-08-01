@@ -215,6 +215,7 @@ if not config["lowRAM"]:
             cBout=temp("results/merge_features_and_muts/{sample}_cB.csv"),
             cUPout=temp("results/merge_features_and_muts/{sample}_cUP.csv"),
             Arrowout="results/arrow_dataset/sample={sample}/part-0.parquet",
+            duckdb = "duckdb/{sample}.duckdb",
         params:
             genes_included=config["features"]["genes"],
             exons_included=config["features"]["exons"],
@@ -236,7 +237,7 @@ if not config["lowRAM"]:
             "logs/merge_features_and_muts/{sample}.log",
         threads: 8
         conda:
-            "../envs/full.yaml"
+            "../envs/merge.yaml"
         shell:
             """
             chmod +x {params.rscript}
