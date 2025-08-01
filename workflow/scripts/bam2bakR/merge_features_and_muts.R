@@ -281,22 +281,20 @@ base_cols <- paste0('n', substr(mut_cols, 1, 1))
 feature_cols <- feature_vect
 
 
-if(opt$makecB | opt$makeArrow){
-  
-  # Create summarized cB
-  dbExecute(con, glue("
-  CREATE OR REPLACE TABLE cB AS
-    SELECT 'opt$sample'      AS sample,
-           rname, sj, {paste(feature_cols, collapse = ',')},
-           {paste(mut_cols, collapse = ',')},
-           {paste(base_cols, collapse = ',')},
-           COUNT(*)            AS n
-    FROM   merged
-    GROUP  BY ALL;
-  "))
-  
-}
+cat(opt$makecB)
+cat(opt$makeArrow)
 
+# Create summarized cB
+dbExecute(con, glue("
+CREATE OR REPLACE TABLE cB AS
+  SELECT 'opt$sample'      AS sample,
+          rname, sj, {paste(feature_cols, collapse = ',')},
+          {paste(mut_cols, collapse = ',')},
+          {paste(base_cols, collapse = ',')},
+          COUNT(*)            AS n
+  FROM   merged
+  GROUP  BY ALL;
+"))
 
 #### Write to cB ####
 
