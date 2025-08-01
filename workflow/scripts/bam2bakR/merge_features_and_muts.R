@@ -95,6 +95,8 @@ opt <- parse_args(opt_parser) # Load options from command line.
 #   ArrowOutput = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/sample=DMSO_8hr_1/new_cB_test.parquet"
 # )
 
+message("opt contents:\n",
+        paste(capture.output(str(opt)), collapse = "\n"))
 
 # DuckDB strategy --------------------------------------------------------------
 
@@ -136,6 +138,8 @@ feature_vect <- c()
 
 if(opt$genes){
   
+  cat("Making genes table...")
+  
   register_feat("genes", glue("./results/featurecounts_genes/{opt$sample}.s.bam.featureCounts"), "GF")
   
   feature_vect <- c(feature_vect, "GF")
@@ -144,6 +148,9 @@ if(opt$genes){
 
 
 if(opt$frombam){
+  
+  cat("Making TEC table...")
+  
   
   dbExecute(con, glue("
   CREATE OR REPLACE VIEW transcripts AS
@@ -159,6 +166,9 @@ if(opt$frombam){
 
 if(opt$exons){
   
+  cat("Making exons table...")
+  
+  
   register_feat("exons", glue("./results/featurecounts_exons/{opt$sample}.s.bam.featureCounts"), "XF")
   
   feature_vect <- c(feature_vect, "XF")
@@ -168,13 +178,19 @@ if(opt$exons){
 
 if(opt$exonbins){
   
-  register_feat("ebs", glue("results/featurecounts_exonbins/{opt$sample}.s.bam.featureCounts"), "exon_bin")
+  cat("Making exonbins table...")
+  
+  
+  register_feat("exonbins", glue("results/featurecounts_exonbins/{opt$sample}.s.bam.featureCounts"), "exon_bin")
   
   feature_vect <- c(feature_vect, "exon_bin")
   
 }
 
 if(opt$eej){
+  
+  cat("Making eej table...")
+  
   
   register_feat("eej", glue("C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/tables/exon_bins.tsv.gz"), "ee_junction_id")
   
@@ -184,6 +200,9 @@ if(opt$eej){
 
 if(opt$eij){
   
+  cat("Making eij table...")
+  
+  
   register_feat("eij", glue("C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/tables/exon_bins.tsv.gz"), "ei_junction_id")
   
   feature_vect <- c(feature_vect, "ei_junction_id")
@@ -192,6 +211,9 @@ if(opt$eij){
 
 
 if(opt$starjunc){
+  
+  cat("Making junctions table...")
+  
   
   dbExecute(con, glue("
   CREATE OR REPLACE VIEW starjunc AS
@@ -252,7 +274,7 @@ select_fragments <- c("m.*")   # always start with all mutation columns
 join_fragments   <- character()
 
 for (feat in feat_catalogue) {
-  if (isTRUE(opt[[feat$flag]])) {
+  if (opt[[feat$flag]]) {
     select_fragments <- c(select_fragments, feat$select)
     join_fragments   <- c(join_fragments,   feat$join)
   }
