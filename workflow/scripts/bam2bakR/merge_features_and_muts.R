@@ -192,7 +192,7 @@ if(opt$eej){
   cat("Making eej table...")
   
   
-  register_feat("eej", glue("C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/tables/exon_bins.tsv.gz"), "ee_junction_id")
+  register_feat("eej", glue("results/featurecounts_eej/{opt$sample}.s.bam.featureCounts"), "ee_junction_id")
   
   feature_vect <- c(feature_vect, "ee_junction_id")
   
@@ -203,7 +203,7 @@ if(opt$eij){
   cat("Making eij table...")
   
   
-  register_feat("eij", glue("C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/tables/exon_bins.tsv.gz"), "ei_junction_id")
+  register_feat("eij", glue("results/featurecounts_eij/{opt$sample}.s.bam.featureCounts"), "ei_junction_id")
   
   feature_vect <- c(feature_vect, "ei_junction_id")
   
