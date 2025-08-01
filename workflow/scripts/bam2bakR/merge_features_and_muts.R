@@ -297,6 +297,12 @@ cat(sql)
 dbExecute(con, sql)
 
 
+# Write to csv
+dbExecute(con, glue("
+  COPY merged TO '{opt$output}' (FORMAT CSV, HEADER 1);
+"))
+
+
 #### cB table creation ####
 mut_cols  <- strsplit(opt$muttypes, ",")[[1]]
 base_cols <- paste0('n', substr(mut_cols, 1, 1))
@@ -326,7 +332,7 @@ if(opt$makecB){
     
   # Write to csv
   dbExecute(con, glue("
-    COPY cB TO '{opt$cBoutput}' (FORMAT CSV, HEADER 1);
+    COPY cB TO '{opt$cBoutput}' (FORMAT CSV, HEADER);
   "))
   
     
@@ -346,7 +352,7 @@ if(opt$makeArrow){
   
   # 2b → Parquet
   dbExecute(con, glue("
-    COPY cB TO '{opt$Arrowoutput}' (FORMAT PARQUET);
+    COPY cB TO '{opt$Arrowoutput}' (FORMAT PARQUET, COMPRESSION snappy);
   "))
   
   
@@ -377,10 +383,14 @@ if(opt$makecUP){
   
   # Create summarized cUP
   dbExecute(con, glue("
-    CREATE OR REPLACE TABLE cB AS
+    CREATE OR REPLACE TABLE cUP AS
     SELECT {select_clause}
     FROM   merged
     GROUP  BY {group_by_clause};
+  "))
+
+  dbExecute(con, glue("
+    COPY cUP TO '{opt$cUPoutput}' (FORMAT CSV, HEADER);
   "))
   
 }else{
