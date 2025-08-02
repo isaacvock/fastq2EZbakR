@@ -315,7 +315,7 @@ cat(opt$makeArrow)
 # Create summarized cB
 dbExecute(con, glue("
 CREATE OR REPLACE TABLE cB AS
-  SELECT 'opt$sample'      AS sample,
+  SELECT '{opt$sample}'      AS sample,
           rname, sj, {paste(feature_cols, collapse = ',')},
           {paste(mut_cols, collapse = ',')},
           {paste(base_cols, collapse = ',')},
