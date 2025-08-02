@@ -147,6 +147,10 @@ final_output:
 mut_tracks: "TC"
 
 
+# How much memory can the merge features and muts step use?
+max_merge_mem: "8G"
+
+
 ### Track normalization parameters
 
 # Normalize sequencing tracks?
@@ -181,11 +185,6 @@ minqual: 40
 # Are you using the Windows subsystem for Linux?
   # Due to a bug in STAR/GNU parallel, tracks have to be created iteratively if this is the case
 WSL: False
-
-
-# Merge mutation counts and feature assignments in a RAM-efficient manner?
-  # Downside is that it's a bit slower
-lowRAM: False
 
 
 # Track site-specific mutational content?
