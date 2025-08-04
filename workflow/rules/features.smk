@@ -20,7 +20,7 @@ rule featurecounts_genes:
     log:
         "logs/featurecounts_genes/{sample}.log",
     wrapper:
-        "v3.0.2/bio/subread/featurecounts"
+        "v7.2.0/bio/subread/featurecounts"
 
 
 # Assign reads to exons
@@ -43,7 +43,7 @@ rule featurecounts_exons:
     log:
         "logs/featurecounts_exons/{sample}.log",
     wrapper:
-        "v3.0.2/bio/subread/featurecounts"
+        "v7.2.0/bio/subread/featurecounts"
 
 
 # Assign reads to transcripts
@@ -65,7 +65,7 @@ rule featurecounts_transcripts:
     log:
         "logs/featurecounts_transcripts/{sample}.log",
     wrapper:
-        "v3.0.2/bio/subread/featurecounts"
+        "v7.2.0/bio/subread/featurecounts"
 
 
 # Assign reads to exonic bins
@@ -87,7 +87,7 @@ rule featurecounts_exonbins:
     log:
         "logs/featurecounts_exonbins/{sample}.log",
     wrapper:
-        "v3.0.2/bio/subread/featurecounts"
+        "v7.2.0/bio/subread/featurecounts"
 
 
 if config.get("run_rsem", True):
@@ -189,7 +189,7 @@ rule featurecounts_eej:
     log:
         "logs/featurecounts_eej/{sample}.log",
     wrapper:
-        "v3.0.2/bio/subread/featurecounts"
+        "v7.2.0/bio/subread/featurecounts"
 
 
 rule featurecounts_eij:
@@ -210,4 +210,4 @@ rule featurecounts_eij:
     log:
         "logs/featurecounts_eij/{sample}.log",
     wrapper:
-        "v3.0.2/bio/subread/featurecounts"
+        "v7.2.0/bio/subread/featurecounts"

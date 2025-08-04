@@ -215,6 +215,7 @@ if not config["lowRAM"]:
             cBout=temp("results/merge_features_and_muts/{sample}_cB.csv"),
             cUPout=temp("results/merge_features_and_muts/{sample}_cUP.csv"),
             Arrowout="results/arrow_dataset/sample={sample}/part-0.parquet",
+            duckdb = "duckdb/{sample}.duckdb",
         params:
             genes_included=config["features"]["genes"],
             exons_included=config["features"]["exons"],
@@ -232,11 +233,12 @@ if not config["lowRAM"]:
             makecB=config["final_output"]["cB"],
             makecUP=config["final_output"]["cUP"],
             makeArrow=config["final_output"]["arrow"],
+            MaxMem=config.get("max_merge_mem", "8G"),
         log:
             "logs/merge_features_and_muts/{sample}.log",
-        threads: 8
+        threads: 32
         conda:
-            "../envs/full.yaml"
+            "../envs/merge.yaml"
         shell:
             """
             chmod +x {params.rscript}
@@ -246,7 +248,7 @@ if not config["lowRAM"]:
             -j {params.eej_included} --starjunc {params.starjunc_included} --eij {params.eij_included} \
             --annotation {params.annotation} -c {output.cBout} -m {params.muttypes} \
             --makecB {params.makecB} --makecUP {params.makecUP} --makeArrow {params.makeArrow} \
-            --cUPout {output.cUPout} --Arrowout {output.Arrowout} 1> {log} 2>&1
+            --cUPout {output.cUPout} --Arrowout {output.Arrowout} --MaxMem {params.MaxMem} 1> {log} 2>&1
             """
 
 
