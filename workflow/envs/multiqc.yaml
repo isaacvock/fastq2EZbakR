@@ -1,7 +1,9 @@
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
   - default
+channel_priority: strict
 dependencies:
-  - multiqc=1.16
-  - python<3.12
+  - multiqc =1.30
+  - snakemake-wrapper-utils =0.7.2
+  - setuptools
