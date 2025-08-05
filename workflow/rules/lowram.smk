@@ -12,6 +12,9 @@
 # summarize over these columns. The output of this can be passed
 # as is to the current makecB script
 
+### NO LONGER NECESSARY GIVEN DUCKDB FOR MERGING!!! (version 0.7.0)
+# Keeping here for legacy reasons and backwards compatibility
+
 ### Sorting rules
 
 

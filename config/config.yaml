@@ -126,8 +126,6 @@ features:
   # arrow = Partitioned database of parquet files, in the format necessary to pass to EZbakR.
   # 
   # At least one of these should be set to True.
-  # If lowRAM == False, any combination of these can be set to True (including all True).
-  # If lowRAM == True, cB and cUP can not both be true.
 final_output:
   cB: True
   cUP: False
