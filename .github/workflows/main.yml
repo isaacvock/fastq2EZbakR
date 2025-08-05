@@ -47,70 +47,70 @@ jobs:
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/altoutput_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/altoutput_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Test workflow (transcripts)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Test workflow (hisat2 no fastp)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/hisat2_skip_fastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/hisat2_skip_fastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Test workflow (lowRAM)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/lowram_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/lowram_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Test workflow (transcripts)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/transcript_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Test workflow (bam2EZbakR)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/bam2bakR_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/bam2bakR_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Test workflow (mutpos)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/mutpos_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/mutpos_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Test workflow (hisat2)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/hisat2_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/hisat2_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Clean up
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --delete-all-output"
+        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --delete-all-output --latency-wait 30"
     - name: Test workflow (no cB)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/nocB_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/nocB_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
     - name: Clean up again
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --delete-all-output"
+        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --delete-all-output --latency-wait 30"
     - name: Test workflow (lowRAM arrow)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/lowram_arrow_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache"
+        args: "--configfile .test/configs/lowram_arrow_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
