@@ -183,7 +183,6 @@ WSL: False
 
 
 # Track site-specific mutational content?
-  # Not currently compatible with lowRAM = True
 mutpos: False
 
 
