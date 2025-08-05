@@ -100,7 +100,7 @@ if NORMALIZE:
             spikename=config["spikename"],
             extra=NORMALIZATION_EXTRA,
         conda:
-            "../envs/full.yaml"
+            "../envs/normalize.yaml"
         shell:
             r"""
             chmod +x {params.rscript}
