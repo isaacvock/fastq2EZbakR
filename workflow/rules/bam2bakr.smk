@@ -100,7 +100,7 @@ if NORMALIZE:
             spikename=config["spikename"],
             extra=NORMALIZATION_EXTRA,
         conda:
-            "../envs/full.yaml"
+            "../envs/normalize.yaml"
         shell:
             r"""
             chmod +x {params.rscript}
@@ -215,7 +215,7 @@ if not config["lowRAM"]:
             cBout=temp("results/merge_features_and_muts/{sample}_cB.csv"),
             cUPout=temp("results/merge_features_and_muts/{sample}_cUP.csv"),
             Arrowout="results/arrow_dataset/sample={sample}/part-0.parquet",
-            duckdb = "duckdb/{sample}.duckdb",
+            duckdb = "results/merge_features_and_muts/duckdb/{sample}.duckdb",
         params:
             genes_included=config["features"]["genes"],
             exons_included=config["features"]["exons"],

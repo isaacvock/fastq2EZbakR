@@ -101,8 +101,8 @@ message("opt contents:\n",
 # DuckDB strategy --------------------------------------------------------------
 
 
-dir.create("duckdb", showWarnings = FALSE)
-con <- dbConnect(duckdb(), dbdir = glue("./duckdb/{opt$sample}.duckdb"), read_only = FALSE)
+dir.create("./results/merge_features_and_muts/duckdb", showWarnings = FALSE)
+con <- dbConnect(duckdb(), dbdir = glue("./results/merge_features_and_muts/duckdb/{opt$sample}.duckdb"), read_only = FALSE)
 dbExecute(con, glue("SET memory_limit='{opt$MaxMem}';"))
 
 
