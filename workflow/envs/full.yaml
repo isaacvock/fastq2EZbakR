@@ -10,10 +10,9 @@ dependencies:
   - parallel =20210222
   - pigz =2.8
   - pysam=0.23.3
-  - star =2.7.7a
+  - star =2.7.11b
   - bcftools = 1.22
-  - igvtools =2.3.93
+  - igvtools =2.5.3
   - natsort=8.4.0
   - bc =1.07.1
   - coreutils =9.5
-  - procps-ng =4.0.4

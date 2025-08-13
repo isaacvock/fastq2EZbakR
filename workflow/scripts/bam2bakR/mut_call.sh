@@ -28,8 +28,30 @@ num_reads=$(samtools view -@ "$cpus" -c "$input")
 if [ "$mutpos" = "True" ]; then
 
     # Get the available RAM in MB and convert it to GB
-    available_ram=$(free -m | awk '/^Mem:/{print $7}') # Memory in MB
-    available_ram=$(echo "$available_ram / 1024" | bc) # Convert to GB
+    # Return approximate available RAM in whole GB (Linux/macOS)
+    available_ram_gb() {
+    case "$(uname -s)" in
+        Linux*)
+        # Prefer /proc/meminfo (no procps needed)
+        awk '/MemAvailable:/ {printf "%.0f", $2/1024/1024}' /proc/meminfo 2>/dev/null \
+            || free -m | awk '/^Mem:/ {printf "%.0f", $7/1024}'
+        ;;
+        Darwin*)
+        # macOS: approx "available" = free + inactive + speculative
+        pagesize=$(sysctl -n hw.pagesize)
+        vm_stat | awk -v ps="$pagesize" '
+            /Pages free/        {gsub("\\.","",$3); free=$3}
+            /Pages inactive/    {gsub("\\.","",$3); inactive=$3}
+            /Pages speculative/ {gsub("\\.","",$3); spec=$3}
+            END { bytes=(free+inactive+spec)*ps; printf "%.0f", bytes/1024/1024/1024 }'
+        ;;
+        *)
+        echo 0
+        ;;
+    esac
+    }
+
+    available_ram=$(available_ram_gb)
 
     # Calculate fragment_size
         # 20 million reads use roughly 1 TB of RAM in mutation counting
