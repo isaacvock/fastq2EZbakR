@@ -321,7 +321,9 @@ mut_cols  <- strsplit(opt$muttypes, ",")[[1]]
 base_cols <- unique(paste0('n', substr(mut_cols, 1, 1)))
 feature_cols <- feature_vect
 
-
+cat(opt$muttypes)
+cat(mut_cols)
+cat(base_cols)
 cat(opt$makecB)
 cat(opt$makeArrow)
 
