@@ -284,12 +284,25 @@ for (feat in feat_catalogue) {
 
 #### LEFT JOIN ####
 
-sql <- glue("
-  CREATE OR REPLACE TABLE merged AS
-  SELECT {paste(select_fragments, collapse = ',\n         ')}
-  FROM   muts m
-  {paste(join_fragments, collapse = '\n  ')}
-;")
+if(length(join_fragments) == 0){
+
+  sql <- glue("
+    CREATE OR REPLACE TABLE merged AS
+    SELECT {paste(select_fragments, collapse = ',\n         ')}
+    FROM   muts m
+  ;")
+
+}else{
+
+  sql <- glue("
+    CREATE OR REPLACE TABLE merged AS
+    SELECT {paste(select_fragments, collapse = ',\n         ')}
+    FROM   muts m
+    {paste(join_fragments, collapse = '\n  ')}
+  ;")
+}
+
+
 
 # Print for debugging
 cat(sql)
