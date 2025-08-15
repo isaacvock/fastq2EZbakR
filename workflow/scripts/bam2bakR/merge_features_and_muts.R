@@ -318,7 +318,7 @@ dbExecute(con, glue("
 
 #### cB table creation ####
 mut_cols  <- strsplit(opt$muttypes, ",")[[1]]
-base_cols <- paste0('n', substr(mut_cols, 1, 1))
+base_cols <- unique(paste0('n', substr(mut_cols, 1, 1)))
 feature_cols <- feature_vect
 
 
