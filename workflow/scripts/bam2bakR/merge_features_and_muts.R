@@ -321,6 +321,8 @@ mut_cols  <- strsplit(opt$muttypes, ",")[[1]]
 base_cols <- unique(paste0('n', substr(mut_cols, 1, 1)))
 feature_cols <- feature_vect
 
+sel_cols <- DBI::dbQuoteIdentifier(con, c(mut_cols, base_cols))
+
 cat(opt$muttypes)
 cat(mut_cols)
 cat(base_cols)
@@ -334,7 +336,7 @@ if(length(join_fragments) == 0){
   CREATE OR REPLACE TABLE cB AS
     SELECT '{opt$sample}'      AS sample,
             rname, sj,
-            {paste(c(mut_cols, base_cols), collapse = ',')},
+            {paste(sel_cols, collapse = ',')},
             COUNT(*)            AS n
     FROM   merged
     GROUP  BY ALL;
