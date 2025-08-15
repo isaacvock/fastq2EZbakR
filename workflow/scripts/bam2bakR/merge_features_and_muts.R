@@ -348,7 +348,7 @@ if(length(join_fragments) == 0){
   CREATE OR REPLACE TABLE cB AS
     SELECT '{opt$sample}'      AS sample,
             rname, sj, {paste(feature_cols, collapse = ',')},
-            {paste(c(mut_cols, base_cols), collapse = ',')}
+            {paste(sel_cols, collapse = ',')},
             COUNT(*)            AS n
     FROM   merged
     GROUP  BY ALL;
