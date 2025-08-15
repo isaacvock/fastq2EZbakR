@@ -54,9 +54,10 @@ if [ "$mutpos" = "True" ]; then
     available_ram=$(available_ram_gb)
 
     # Calculate fragment_size
-        # 20 million reads use roughly 1 TB of RAM in mutation counting
-        # script when mutpos is True, so plan accordingly
-    fragment_size_ram_based=$(echo "scale=0; $available_ram / ($cpus * 0.00025)" | bc)
+        # 20 million reads used to use roughly 1 TB of RAM in mutation counting
+        # script when mutpos is True. That should be much less now, but unclear how much
+        # less. Being a bit less conservative now, might be able to be even less so though
+    fragment_size_ram_based=$(echo "scale=0; $available_ram / ($cpus * 0.0025)" | bc)
 
 
     # Calculate fragment_size based on number_of_reads and CPUs
