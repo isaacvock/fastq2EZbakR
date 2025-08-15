@@ -326,16 +326,34 @@ cat(opt$makecB)
 cat(opt$makeArrow)
 
 # Create summarized cB
-dbExecute(con, glue("
-CREATE OR REPLACE TABLE cB AS
-  SELECT '{opt$sample}'      AS sample,
-          rname, sj, {paste(feature_cols, collapse = ',')},
-          {paste(mut_cols, collapse = ',')},
-          {paste(base_cols, collapse = ',')},
-          COUNT(*)            AS n
-  FROM   merged
-  GROUP  BY ALL;
-"))
+if(length(join_fragments) == 0){
+
+  dbExecute(con, glue("
+  CREATE OR REPLACE TABLE cB AS
+    SELECT '{opt$sample}'      AS sample,
+            rname, sj,
+            {paste(mut_cols, collapse = ',')},
+            {paste(base_cols, collapse = ',')},
+            COUNT(*)            AS n
+    FROM   merged
+    GROUP  BY ALL;
+  "))
+
+}else{
+
+  dbExecute(con, glue("
+  CREATE OR REPLACE TABLE cB AS
+    SELECT '{opt$sample}'      AS sample,
+            rname, sj, {paste(feature_cols, collapse = ',')},
+            {paste(mut_cols, collapse = ',')},
+            {paste(base_cols, collapse = ',')},
+            COUNT(*)            AS n
+    FROM   merged
+    GROUP  BY ALL;
+  "))
+
+}
+
 
 #### Write to cB ####
 
