@@ -127,7 +127,7 @@ register_feat <- function(view, path, feat_col)
 dbExecute(con, glue("
   CREATE OR REPLACE VIEW muts AS
     SELECT * FROM read_csv_auto(
-      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE);
+      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE, types = {{'FR': 'VARCHAR'}});
 "))
 
 
