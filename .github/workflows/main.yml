@@ -96,9 +96,3 @@ jobs:
         directory: .test
         snakefile: workflow/Snakefile
         args: "--configfile .test/configs/nocB_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Clean up again
-      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
-      with:
-        directory: .test
-        snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --delete-all-output --latency-wait 30"
