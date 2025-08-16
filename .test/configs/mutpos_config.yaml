@@ -147,7 +147,7 @@ normalize: True
       # count T-to-C mutations
     # "TC,GA"
       # counts T-to-C and G-to-A mutations
-mut_tracks: "TC,AG,AC"
+mut_tracks: "AT,AG,AC"
 
 
 # Minimum base quality to call mutation

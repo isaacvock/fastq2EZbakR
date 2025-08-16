@@ -127,7 +127,7 @@ register_feat <- function(view, path, feat_col)
 dbExecute(con, glue("
   CREATE OR REPLACE VIEW muts AS
     SELECT * FROM read_csv_auto(
-      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE);
+      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE, types = {{'FR': 'VARCHAR'}});
 "))
 
 
@@ -318,10 +318,14 @@ dbExecute(con, glue("
 
 #### cB table creation ####
 mut_cols  <- strsplit(opt$muttypes, ",")[[1]]
-base_cols <- paste0('n', substr(mut_cols, 1, 1))
+base_cols <- unique(paste0('n', substr(mut_cols, 1, 1)))
 feature_cols <- feature_vect
 
+sel_cols <- DBI::dbQuoteIdentifier(con, c(mut_cols, base_cols))
 
+cat(opt$muttypes)
+cat(mut_cols)
+cat(base_cols)
 cat(opt$makecB)
 cat(opt$makeArrow)
 
@@ -332,8 +336,7 @@ if(length(join_fragments) == 0){
   CREATE OR REPLACE TABLE cB AS
     SELECT '{opt$sample}'      AS sample,
             rname, sj,
-            {paste(mut_cols, collapse = ',')},
-            {paste(base_cols, collapse = ',')},
+            {paste(sel_cols, collapse = ',')},
             COUNT(*)            AS n
     FROM   merged
     GROUP  BY ALL;
@@ -345,8 +348,7 @@ if(length(join_fragments) == 0){
   CREATE OR REPLACE TABLE cB AS
     SELECT '{opt$sample}'      AS sample,
             rname, sj, {paste(feature_cols, collapse = ',')},
-            {paste(mut_cols, collapse = ',')},
-            {paste(base_cols, collapse = ',')},
+            {paste(sel_cols, collapse = ',')},
             COUNT(*)            AS n
     FROM   merged
     GROUP  BY ALL;
