@@ -1,6 +1,6 @@
 # fastq2EZbakR
 
-fastq2EZbakR is a Snakemake pipeline designed to process nucleotide recoding RNA-seq data (NR-seq, e.g., [TimeLapse-seq](https://www.nature.com/articles/nmeth.4582), [SLAM-seq](https://www.nature.com/articles/nmeth.4435), [TUC-seq](https://pubmed.ncbi.nlm.nih.gov/31768978/), etc.). fastq2EZbakR provides output readily compatible with [EZbakR](https://github.com/isaacvock/EZbakR), but is also designed to provide processed NR-seq data in a convenient form that you can work with as you see fit. fastq2EZbakR is the successor to [bam2bakR](https://github.com/simonlabcode/bam2bakR), and in the near future, bam2bakR will be fully converted to a fastq2EZbakR wrapper. See [our paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1013179) for a discussion of the motivation behind fastq2EZbakR and its companion R package [EZbakR](https://github.com/isaacvock/EZbakR).
+fastq2EZbakR is a Snakemake pipeline designed to process nucleotide recoding RNA-seq data (NR-seq, e.g., [TimeLapse-seq](https://www.nature.com/articles/nmeth.4582), [SLAM-seq](https://www.nature.com/articles/nmeth.4435), [TUC-seq](https://pubmed.ncbi.nlm.nih.gov/31768978/), etc.). fastq2EZbakR provides output readily compatible with [EZbakR](https://github.com/isaacvock/EZbakR), but is also designed to provide processed NR-seq data in a convenient form that you can work with as you see fit. fastq2EZbakR is the successor to [bam2bakR](https://github.com/simonlabcode/bam2bakR). See [our paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1013179) for a discussion of the motivation behind fastq2EZbakR and its companion R package [EZbakR](https://github.com/isaacvock/EZbakR).
 
 **Documentation can be found here: [https://fastq2ezbakr.readthedocs.io/en/latest/](https://fastq2ezbakr.readthedocs.io/en/latest/)**
 
@@ -109,4 +109,5 @@ snakemake --cores all --use-conda --rerun-triggers mtime --keep-going
 ```
 
 The difference is that now instead of using Snakedeploy (which you no longer even need to install), you clone the repo locally and copy over the workflow and config directories to wherever you want to run the pipeline. The downside of this approach is that if I make changes to the pipeline that you want to adopt, you will have to manually "update" the pipeline by going to the fastq2EZbakR directory and running `git pull`, and then retransferring the workflow directory (and potentially the config directory too if the pipeline change involves new config parameters you would like to adjust).
+
 
