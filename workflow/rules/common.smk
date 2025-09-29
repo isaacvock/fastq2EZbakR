@@ -95,7 +95,7 @@ if not config["download_fastqs"]:
     is_gz = False
 
     for p in fastq_paths.values():
-        fastqs = sorted(glob.glob(f"{p}/*.fastq*"))
+        fastqs = sorted(set(glob.glob(f"{p}/*.fastq*") + glob.glob(f"{p}/*.fq*")))
         test_gz = any(path.endswith(".fastq.gz") for path in fastqs)
         is_gz = any([is_gz, test_gz])
 
@@ -157,8 +157,8 @@ def get_fastqc_read(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(glob.glob(f"{fastq_path}/*.fastq*"))
-            readID = int(wildcards.read)
+            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            readID = int(wildcards.read) - 1
             return fastq_files[readID]
 
     else:
@@ -181,8 +181,8 @@ def get_fastq_r1(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(glob.glob(f"{fastq_path}/*.fastq*"))
-            return fastq_files[1]
+            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            return fastq_files[0]
 
     elif config["PE"]:
         return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
@@ -198,8 +198,8 @@ def get_fastq_r2(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(glob.glob(f"{fastq_path}/*.fastq*"))
-            return fastq_files[2]
+            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            return fastq_files[1]
 
     elif config["PE"]:
         return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
@@ -231,7 +231,7 @@ def get_hisat2_reads(wildcards, READS=READS):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(glob.glob(f"{fastq_path}/*.fastq*"))
+            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
             return fastq_files
 
     else:
