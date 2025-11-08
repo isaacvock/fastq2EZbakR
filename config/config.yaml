@@ -103,6 +103,10 @@ strandedness: "reverse"
   # exonic_bins = exonic regions as defined in DEXSeq paper (Anders et al., 2012)
   # junctions = exon-exon junctions. Only compatible with STAR-based alignment
     # as STAR's unique jI and jM bam file tags are required
+  # threeputr = 3'-UTRs. Should only be used with 3'-end sequencing data.
+    # This option is paired with `call_threeputrs` which determines whether or not
+    # 3' UTRs are called de novo using your data or whether an annotation of 3'UTRs that
+    # you provide is used
   # eej = exon-exon junctions. Less accurate than junctions but compatible with any
     # bam file. A new GTF file will be created with annotation for the junction_IDs
     # that will show up in the final cB
@@ -114,9 +118,15 @@ features:
     tec: False
     exonic_bins: False
     junctions: False
+    threeputr: True
     eej: False
     eij: False
 
+# Only relevant if threeputr == True
+  # If call_threeputrs == True, then 3'-ends are called directly from your 3'-end sequencing data
+  # I call_threeputrs == False, then your provided GTF (path specified in `annotation`)
+    # must contain values of `3UTR` in a field (column) called "type".
+call_threeputrs: True
 
 ####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
 
@@ -348,6 +358,36 @@ junction_annotation_params: ""
 multiqc_extra: ""
 
 
+##### De novo 3'-UTR CALLING PARAMETERS #####
+
+### Bedtools parameters
+
+# How many reads does a 3'UTR need in at least one sample to make it to the final annotation
+coverage_cutoff: 25
+
+# -d parameter of bedtools cluster; sets distance between peaks to be clustered
+bedtools_cluster_distance: 20
+
+
+### Deeptools bamCoverge parameters
+deeptools_params: ""
+
+
+### 3'-utr GTF creation parameters
+
+
+# Minimum coverage in a cluster for it to make it to the annotation
+cluster_coverage: 100
+
+# Minimum fractional usage (# of reads / sum(# of reads for all clusters in gene) )
+# of a cluster for it to make it to the annotation
+cluster_fxn: 0.0
+
+# Length by which to extend either end of genes when finding genes that a cluster overlaps with
+extension: 0
+
+
+### 3'-utr GTF filtering parameters
 
 ##############################
 ##### DEFUNCT PARAMETERS #####

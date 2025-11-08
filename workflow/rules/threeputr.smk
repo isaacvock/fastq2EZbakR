@@ -171,3 +171,8 @@ rule make_threepUTR_gtf:
             --min_coverage {params.coverage} \
             --min_fxn {params.fxn} 1> {log} 2>&1
         """
+
+# ### Filter 3'UTR GTF
+# rule filter_threepUTR_gtf:
+#     input:
+#         "annotations/threepUTR_annotation.gtf"

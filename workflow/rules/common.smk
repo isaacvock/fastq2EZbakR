@@ -122,6 +122,9 @@ if config["features"]["junctions"]:
     keepcols.append("junction_start")
     keepcols.append("junction_end")
 
+if config.get("features").get("threeputr", False):
+    keepcols.append("threepUTR")
+
 if config["features"]["eij"]:
     keepcols.append("ei_junction_id")
 
@@ -509,6 +512,14 @@ def get_merge_input(wildcards):
             expand("results/read_to_junctions/{SID}.csv.gz", SID=wildcards.sample)
         )
 
+    if config.get("features").get("threeputr", False):
+        MERGE_INPUT.extend(
+            expand(
+                "results/featurecounts_3utr/{SID}.s.bam.featureCounts",
+                SID=wildcards.sample,
+            )
+        )
+
     if config["features"]["eej"]:
         MERGE_INPUT.extend(
             expand(
@@ -734,6 +745,9 @@ if config["features"]["junctions"]:
     colnames.append("junction_start")
     colnames.append("junction_end")
 
+if config.get("features").get("threeputr", False):
+    colnames.append("threepUTR")
+
 
 if config["features"]["eej"]:
     colnames.append("ee_junction_id")
@@ -919,3 +933,26 @@ if config.get("aligner") == "star":
     MULTIQC_INPUT.append(
         expand("results/align/{sample}-Log.final.out", sample=SAMP_NAMES)
     )
+
+
+##### 3'-UTR FEATURECOUNTS PARAMETER #####
+
+if config["PE"]:
+    if config.get("strandedness") == "reverse":
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 5"
+    else:
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 3"
+else:
+    if config.get("strandedness") == "reverse":
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 5"
+    else:
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 3"
+
+
+if config.get("call_threeputrs", False):
+
+    THREEPUTR_ANNOTATION = config.get("annotation", "")
+
+else:
+
+    THREEPUTR_ANNOTATION = "annotations/threepUTR_annotation.gtf"
