@@ -10,7 +10,7 @@ Check out some of the blogs I have written on the topic:
 
 1. [An introduction on how to interpret NR-seq data](https://isaacvock.github.io/posts/post-with-code/). In this post, I use the task of building up an NR-seq simulator in R to help you develop an intuition for the important features of NR-seq data. Code is interactive and can be edited and re-executed in your browser without any additional setup (thanks to Quarto-live and webr).
 2. [An introduction on how to analyze NR-seq data](https://isaacvock.github.io/posts/nrseq_analysis/). In this post, I motivate the concept of mixture modeling, the gold standard analysis strategy implemented in tools like EZbakR and GRAND-SLAM. I also show you how to implement the strategy yourself in R (code is interactive once again).
-3. Coming soon: an in-depth, nearly exhaustive, guide to NR-seq data. Covers the history, data interpretation, data processing, analyzing processed data, designing experiments, and extensions of NR-seq that have been developed. This is taken from Chapter 1 of my [thesis](https://github.com/isaacvock/Thesis).
+3. Coming soon: an in-depth, nearly exhaustive, guide to NR-seq data. Covers the history, data interpretation, data processing, analyzing processed data, designing experiments, and extensions of NR-seq that have been developed. This will be taken from Chapter 1 of my [thesis](https://github.com/isaacvock/Thesis).
 
 
 ## Input
@@ -117,6 +117,7 @@ snakemake --cores all --use-conda --rerun-triggers mtime --keep-going
 ```
 
 The difference is that now instead of using Snakedeploy (which you no longer even need to install), you clone the repo locally and copy over the workflow and config directories to wherever you want to run the pipeline. The downside of this approach is that if I make changes to the pipeline that you want to adopt, you will have to manually "update" the pipeline by going to the fastq2EZbakR directory and running `git pull`, and then retransferring the workflow directory (and potentially the config directory too if the pipeline change involves new config parameters you would like to adjust).
+
 
 
 
