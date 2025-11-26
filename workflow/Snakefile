@@ -90,6 +90,11 @@ if not config["bam2bakr"]:
     include: "rules/multiQC.smk"
 
 
+if config.get("features").get("threeputr", False):
+    
+    include: "rules/threeputr.smk"
+
+
 # include: "rules/salmon.smk"
 
 
