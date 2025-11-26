@@ -470,7 +470,7 @@ def get_merge_input(wildcards):
         expand("results/counts/{SID}_counts.csv.gz", SID=wildcards.sample)
     )
 
-    if config["features"]["genes"]:
+    if config.get("features").get("genes", True):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_genes/{SID}.s.bam.featureCounts",
@@ -478,7 +478,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["exons"]:
+    if config.get("features").get("exons", True):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_exons/{SID}.s.bam.featureCounts",
@@ -486,7 +486,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["transcripts"]:
+    if config.get("features").get("transcripts", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_transcripts/{SID}.s.bam.featureCounts",
@@ -494,7 +494,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["exonic_bins"]:
+    if config.get("features").get("exonic_bins", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_exonbins/{SID}.s.bam.featureCounts",
@@ -502,12 +502,12 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["tec"]:
+    if config.get("features").get("tec", False):
         MERGE_INPUT.extend(
             expand("results/read_to_transcripts/{SID}.csv", SID=wildcards.sample)
         )
 
-    if config["features"]["junctions"]:
+    if config.get("features").get("junctions", False):
         MERGE_INPUT.extend(
             expand("results/read_to_junctions/{SID}.csv.gz", SID=wildcards.sample)
         )
@@ -520,7 +520,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["eej"]:
+    if config.get("features").get("eej", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_eej/{SID}.s.bam.featureCounts",
@@ -528,7 +528,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["eij"]:
+    if config.get("features").get("eij", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_eij/{SID}.s.bam.featureCounts",
