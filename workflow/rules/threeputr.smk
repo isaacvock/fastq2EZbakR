@@ -147,6 +147,7 @@ rule make_threepUTR_gtf:
             strand=["minus", "plus"],
         ),
         gtf=config.get("annotation"),
+        fasta=config.get("genome"),
     output:
         "annotations/threepUTR_annotation.gtf",
     log:
@@ -158,6 +159,9 @@ rule make_threepUTR_gtf:
         coverage=config.get("cluster_coverage", 100),
         fxn=config.get("cluster_fxn", 0.0),
         extension=config.get("extension", 0),
+        polyA=config.get("false_polyA_len", 7),
+        CPA=config.get("require_CPA_site", False),
+        only_annotated=config.get("only_annotated_threeputrs", False)
     threads: 1
     shell:
         """
@@ -166,13 +170,12 @@ rule make_threepUTR_gtf:
             --bed_minus {input.bed[0]} \
             --bed_plus {input.bed[1]} \
             --gtf {input.gtf} \
+            --fasta {input.fasta} \ 
             --output {output} \
             --extension {params.extension} \
             --min_coverage {params.coverage} \
+            --false_polyA_len {params.polyA} \
+            --require_CPA {params.CPA} \
+            --only_annotated {params.only_annotated} \
             --min_fxn {params.fxn} 1> {log} 2>&1
         """
-
-# ### Filter 3'UTR GTF
-# rule filter_threepUTR_gtf:
-#     input:
-#         "annotations/threepUTR_annotation.gtf"

@@ -122,11 +122,27 @@ features:
     eej: False
     eij: False
 
-# Only relevant if threeputr == True
-  # If call_threeputrs == True, then 3'-ends are called directly from your 3'-end sequencing data
-  # I call_threeputrs == False, then your provided GTF (path specified in `annotation`)
-    # must contain values of `3UTR` in a field (column) called "type".
+### Parameters that are only relevant if threeputr == True
+
+# If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
+# I call_threeputrs == False, then your provided GTF (path specified in `annotation`)
+  # must contain values of `3UTR` in a field (column) called "type".
 call_threeputrs: True
+
+# Only relevant if call_threeputrs == True
+# If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
+# 3'-ends will be filtered out
+only_annotated_threeputrs: True
+
+# Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
+# Filter out de novo called 3'-UTRs near a polyA stretch of length false_polyA_len (i.e., could be case of mis-priming)
+# Annotated 3' UTRs will always be kept
+false_polyA_len: 7
+
+# Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
+# Filter out de novo called 3'-UTRs not near a CPA consensus sequence (AAUAAA)
+# Annotated 3' UTRs will always be kept
+require_CPA_site: False
 
 ####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
 
