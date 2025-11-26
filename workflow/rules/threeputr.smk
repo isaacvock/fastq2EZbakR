@@ -156,7 +156,7 @@ rule make_threepUTR_gtf:
         "../envs/Rbio.yaml"
     params:
         rscript=workflow.source_path("../scripts/make_3pgtf.R"),
-        coverage=config.get("cluster_coverage", 100),
+        coverage=config.get("cluster_coverage", 20*NUM_SAMPS),
         fxn=config.get("cluster_fxn", 0.0),
         extension=config.get("extension", 0),
         polyA=config.get("false_polyA_len", 7),

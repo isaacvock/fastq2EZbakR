@@ -215,6 +215,9 @@ rule featurecounts_eij:
 
 
 # Assign reads to 3'-UTRs using only single nucleotide of read (3'-end position) for assignment
+    # TO-DO: Might need to add a step for paired-end data where only informative read is extracted
+    # and passed to this step. Not sure for paired-end data how featureCounts' read2pos works (will it
+    # use both read's single base?)
 rule featurecounts_3utr:
     input:
         samples="results/sf_reads/{sample}.s.bam",

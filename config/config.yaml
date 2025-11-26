@@ -122,6 +122,11 @@ features:
     eej: False
     eij: False
 
+
+
+####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
+
+
 ### Parameters that are only relevant if threeputr == True
 
 # If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
@@ -144,9 +149,20 @@ false_polyA_len: 7
 # Annotated 3' UTRs will always be kept
 require_CPA_site: False
 
-####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
+# Minimum coverage in a cluster of 3'-ends for it to make it to the annotation
+# = total number of reads across all samples
+# If you don't uncomment this parameter, default is 20 * number of samples
+# cluster_coverage: 100
 
-# What final output do you want pipeline to create?
+# Minimum fractional usage (# of reads / sum(# of reads for all clusters in gene) )
+# of a cluster for it to make it to the annotation
+cluster_fxn: 0.0
+
+# Length by which to extend either end of genes when finding genes that a cluster overlaps with
+extension: 0
+
+
+### What final output do you want pipeline to create?
   # cB = standard cB file tracking number of mutations and number of mutable reference nucleotides in each read.
   # cUP = remove the mutable reference nucleotide count and instead compute the average of this value for reads
   #         with the same mutational content. This is orders of magnitude more compressed than a cB file (typically
@@ -158,10 +174,10 @@ require_CPA_site: False
 final_output:
   cB: True
   cUP: False
-  arrow: False
+  arrow: True
 
 
-# Types of mutations to make tracks for otherwise
+### Types of mutations to make tracks for otherwise
   # Comma separated string of mutation type
   # Examples:
     # "TC"
@@ -171,7 +187,7 @@ final_output:
 mut_tracks: "TC"
 
 
-# How much memory can the merge features and muts step use?
+### How much memory can the merge features and muts step use?
 max_merge_mem: "8G"
 
 
@@ -388,22 +404,6 @@ bedtools_cluster_distance: 20
 ### Deeptools bamCoverge parameters
 deeptools_params: ""
 
-
-### 3'-utr GTF creation parameters
-
-
-# Minimum coverage in a cluster for it to make it to the annotation
-cluster_coverage: 100
-
-# Minimum fractional usage (# of reads / sum(# of reads for all clusters in gene) )
-# of a cluster for it to make it to the annotation
-cluster_fxn: 0.0
-
-# Length by which to extend either end of genes when finding genes that a cluster overlaps with
-extension: 0
-
-
-### 3'-utr GTF filtering parameters
 
 ##############################
 ##### DEFUNCT PARAMETERS #####

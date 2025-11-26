@@ -19,6 +19,8 @@ if config["download_fastqs"]:
 else:
     SAMP_NAMES = list(config["samples"].keys())
 
+NUM_SAMPS = len(SAMP_NAMES)
+
 
 # Directory containing index; used in case of certain aligners
 INDEX_DIR = config["indices"]
