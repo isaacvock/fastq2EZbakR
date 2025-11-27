@@ -93,7 +93,7 @@ rule merge_3pend_bg:
             fi
         fi
 
-        bedtools unionbedg -filter 0 -i {input} \
+        bedtools unionbedg -i {input} \
         | awk 'BEGIN{{OFS="\t"}}{{s=0; for(i=4;i<=NF;i++) s+=$i; print $1,$2,$3,s}}' \
         | LC_COLLATE=C sort -k1,1 -k2,2n > {output} 2>{log}
         """
