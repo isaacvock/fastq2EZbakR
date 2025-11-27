@@ -7,7 +7,7 @@ Rules to build a custom 3'UTR annotation from 3'-end data
 # Read 1, first nucleotide represents the transcript end
 rule get_informative_read:
     input:
-        "results/filter/{sample}.bam",
+        "results/sf_reads/{sample}.s.bam",
     output:
         "results/informative_read/{sample}_informative.bam",
     log:
