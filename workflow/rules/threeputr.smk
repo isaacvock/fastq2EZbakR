@@ -154,7 +154,7 @@ rule make_threepUTR_gtf:
     conda:
         "../envs/Rbio.yaml"
     params:
-        rscript=workflow.source_path("../scripts/make_3pgtf.R"),
+        rscript=workflow.source_path("../scripts/threeputrs/make_3pgtf.R"),
         coverage=config.get("cluster_coverage", 20 * NUM_SAMPS),
         fxn=config.get("cluster_fxn", 0.0),
         extension=config.get("extension", 0),
