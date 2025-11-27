@@ -59,7 +59,7 @@ def get_input_fastqs(wildcards):
             print(f"Sample {wildcards.sample} is single-end.")
 
         paths = [
-            f"results/download_fastq/{wildcards.sample}{read}" for read in SRA_READS
+            f"results/download_fastq/{wildcards.sample} {read}" for read in SRA_READS
         ]
         print(f"Paths: {sorted(paths)}")
         return sorted(paths)
@@ -162,7 +162,12 @@ def get_fastqc_read(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             readID = int(wildcards.read) - 1
             return fastq_files[readID]
 
@@ -186,7 +191,12 @@ def get_fastq_r1(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             return fastq_files[0]
 
     elif config["PE"]:
@@ -203,7 +213,12 @@ def get_fastq_r2(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             return fastq_files[1]
 
     elif config["PE"]:
@@ -236,7 +251,12 @@ def get_hisat2_reads(wildcards, READS=READS):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             return fastq_files
 
     else:
@@ -952,9 +972,7 @@ else:
 
 
 if config.get("call_threeputrs", False):
-
-    THREEPUTR_ANNOTATION = config.get("annotation", "")
+    THREEPUTR_ANNOTATION = config.get("annotation")
 
 else:
-
     THREEPUTR_ANNOTATION = "annotations/threepUTR_annotation.gtf"

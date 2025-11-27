@@ -91,7 +91,7 @@ if not config["bam2bakr"]:
 
 
 if config.get("features").get("threeputr", False):
-    
+
     include: "rules/threeputr.smk"
 
 

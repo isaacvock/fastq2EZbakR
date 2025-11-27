@@ -4,8 +4,8 @@
 
 ### TO-DO
 ## 1) Clean up sort/filter function; maybe reduce number of output files
-if config["bam2bakr"]:
-    if config["remove_tags"]:
+if config.get("bam2bakr", False):
+    if config.get("remove_tags", False):
 
         # Remove tags from bam files that can break HTSeq
         rule remove_tags:
@@ -201,7 +201,7 @@ rule cnt_muts:
         """
 
 
-if not config["lowRAM"]:
+if not config.get("lowRAM", False):
 
     # Merge mutation counts with feature assignment
     # Bit of a cheap hack here where I didn't want to deal with dynamically
@@ -215,7 +215,7 @@ if not config["lowRAM"]:
             cBout=temp("results/merge_features_and_muts/{sample}_cB.csv"),
             cUPout=temp("results/merge_features_and_muts/{sample}_cUP.csv"),
             Arrowout="results/arrow_dataset/sample={sample}/part-0.parquet",
-            duckdb = "results/merge_features_and_muts/duckdb/{sample}.duckdb",
+            duckdb="results/merge_features_and_muts/duckdb/{sample}.duckdb",
         params:
             genes_included=config.get("features").get("genes", True),
             exons_included=config.get("features").get("exons", True),
@@ -224,7 +224,7 @@ if not config["lowRAM"]:
             bamfiletranscripts_included=config.get("features").get("tec", False),
             eej_included=config.get("features").get("eej", False),
             eij_included=config.get("features").get("eij", False),
-            threeputr_included=config.get("features").get("threeputr", False)
+            threeputr_included=config.get("features").get("threeputr", False),
             starjunc_included=config.get("features").get("junctions", False),
             rscript=workflow.source_path(
                 "../scripts/bam2bakR/merge_features_and_muts.R"

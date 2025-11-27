@@ -2,6 +2,7 @@
 Rules to build a custom 3'UTR annotation from 3'-end data
 """
 
+
 ### For paired-end experiments, keep only the read that "matters"
 # Read 1, first nucleotide represents the transcript end
 rule get_informative_read:
@@ -18,6 +19,7 @@ rule get_informative_read:
         """
         samtools view -@ {threads} -hb -f 64 {input} -o {output} 1> {log} 2>&1
         """
+
 
 ### Convert to PAS location tracks
 # Strandedness handling a bity wonky
@@ -63,9 +65,7 @@ rule bam_to_3pend_bg:
 ### Merge all bedgraphs into one
 rule merge_3pend_bg:
     input:
-        expand(
-            "results/bam2bg/{sample}_informative_{{strand}}.bg", sample=SAMP_NAMES
-        ),
+        expand("results/bam2bg/{sample}_informative_{{strand}}.bg", sample=SAMP_NAMES),
     output:
         "results/merge_3pend_bg/merged_3pend_{strand}.bg",
     params:
@@ -97,7 +97,6 @@ rule merge_3pend_bg:
         | awk 'BEGIN{{OFS="\t"}}{{s=0; for(i=4;i<=NF;i++) s+=$i; print $1,$2,$3,s}}' \
         | LC_COLLATE=C sort -k1,1 -k2,2n > {output} 2>{log}
         """
-
 
 
 ### Alternatively, identify regions of transcript end clusters, representing likely
@@ -156,12 +155,12 @@ rule make_threepUTR_gtf:
         "../envs/Rbio.yaml"
     params:
         rscript=workflow.source_path("../scripts/make_3pgtf.R"),
-        coverage=config.get("cluster_coverage", 20*NUM_SAMPS),
+        coverage=config.get("cluster_coverage", 20 * NUM_SAMPS),
         fxn=config.get("cluster_fxn", 0.0),
         extension=config.get("extension", 0),
         polyA=config.get("false_polyA_len", 7),
         CPA=config.get("require_CPA_site", False),
-        only_annotated=config.get("only_annotated_threeputrs", False)
+        only_annotated=config.get("only_annotated_threeputrs", False),
     threads: 1
     shell:
         """
@@ -170,7 +169,7 @@ rule make_threepUTR_gtf:
             --bed_minus {input.bed[0]} \
             --bed_plus {input.bed[1]} \
             --gtf {input.gtf} \
-            --fasta {input.fasta} \ 
+            --fasta {input.fasta} \
             --output {output} \
             --extension {params.extension} \
             --min_coverage {params.coverage} \

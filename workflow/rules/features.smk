@@ -192,6 +192,7 @@ rule featurecounts_eej:
     wrapper:
         "v7.2.0/bio/subread/featurecounts"
 
+
 # Experimental: assign reads to exon-intron junctions through ad-hoc not 100%-accurate approach
 rule featurecounts_eij:
     input:
@@ -215,9 +216,9 @@ rule featurecounts_eij:
 
 
 # Assign reads to 3'-UTRs using only single nucleotide of read (3'-end position) for assignment
-    # TO-DO: Might need to add a step for paired-end data where only informative read is extracted
-    # and passed to this step. Not sure for paired-end data how featureCounts' read2pos works (will it
-    # use both read's single base?)
+# TO-DO: Might need to add a step for paired-end data where only informative read is extracted
+# and passed to this step. Not sure for paired-end data how featureCounts' read2pos works (will it
+# use both read's single base?)
 rule featurecounts_3utr:
     input:
         samples="results/sf_reads/{sample}.s.bam",
@@ -240,5 +241,3 @@ rule featurecounts_3utr:
         "logs/featurecounts_3utr/{sample}.log",
     wrapper:
         "v7.2.0/bio/subread/featurecounts"
-
-
