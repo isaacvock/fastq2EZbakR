@@ -972,7 +972,7 @@ else:
 
 
 if config.get("call_threeputrs", False):
-    THREEPUTR_ANNOTATION = config.get("annotation")
+    THREEPUTR_ANNOTATION = "annotations/threepUTR_annotation.gtf"
 
 else:
-    THREEPUTR_ANNOTATION = "annotations/threepUTR_annotation.gtf"
+    THREEPUTR_ANNOTATION = config.get("annotation")
