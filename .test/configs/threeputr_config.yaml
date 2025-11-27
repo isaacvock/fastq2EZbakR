@@ -371,10 +371,10 @@ multiqc_extra: ""
 ### Bedtools parameters
 
 # How many reads does a 3'UTR need in at least one sample to make it to the final annotation
-coverage_cutoff: 25
+coverage_cutoff: 1
 
 # -d parameter of bedtools cluster; sets distance between peaks to be clustered
-bedtools_cluster_distance: 20
+bedtools_cluster_distance: 200
 
 
 ### Deeptools bamCoverge parameters
