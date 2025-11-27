@@ -113,7 +113,7 @@ call_threeputrs: True
 # Only relevant if call_threeputrs == True
 # If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
 # 3'-ends will be filtered out
-only_annotated_threeputrs: True
+only_annotated_threeputrs: False
 
 # Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
 # Filter out de novo called 3'-UTRs near a polyA stretch of length false_polyA_len (i.e., could be case of mis-priming)
@@ -128,7 +128,7 @@ require_CPA_site: True
 # Minimum coverage in a cluster of 3'-ends for it to make it to the annotation
 # = total number of reads across all samples
 # If you don't uncomment this parameter, default is 20 * number of samples
-# cluster_coverage: 100
+cluster_coverage: 1
 
 # Minimum fractional usage (# of reads / sum(# of reads for all clusters in gene) )
 # of a cluster for it to make it to the annotation
