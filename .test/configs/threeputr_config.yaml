@@ -36,7 +36,7 @@ control_samples: []
 
 # Paired end? 
   # Set to True or False, no double quotes
-PE: True
+PE: False
 
 # Path to genome fasta file
 genome: data/genome/genome.fasta
@@ -70,7 +70,7 @@ indices: star_index
   # yes means that read 1 represents 5' to 3' sequence of original RNA
   # no means unstranded
   # Used by HTSeq (see https://htseq.readthedocs.io/en/master/htseqcount.html for details)
-strandedness: "reverse"
+strandedness: "forward"
 
 # Features to assign reads to
   # genes = anywhere in an annotated gene body
