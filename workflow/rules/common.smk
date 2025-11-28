@@ -59,7 +59,7 @@ def get_input_fastqs(wildcards):
             print(f"Sample {wildcards.sample} is single-end.")
 
         paths = [
-            f"results/download_fastq/{wildcards.sample} {read}" for read in SRA_READS
+            f"results/download_fastq/{wildcards.sample}{read}" for read in SRA_READS
         ]
         print(f"Paths: {sorted(paths)}")
         return sorted(paths)
