@@ -15,9 +15,16 @@ rule get_informative_read:
     conda:
         "../envs/genomictools.yaml"
     threads: 8
+    params:
+        # Choose which mate is informative based on strandedness.
+        #   - reverse-stranded: read 1 (flag 64) gives 3'-end info
+        #   - forward-stranded: read 2 (flag 128) gives 3'-end info
+        informative_flag = lambda wildcards: (
+            "64" if config["strandedness"] == "reverse" else "128"
+        )
     shell:
         """
-        samtools view -@ {threads} -hb -f 64 {input} -o {output} 1> {log} 2>&1
+        samtools view -@ {threads} -hb -f {params.informative_flag} {input} -o {output} 1> {log} 2>&1
         """
 
 
@@ -25,7 +32,7 @@ rule get_informative_read:
 # Strandedness handling a bity wonky
 rule bam_to_3pend_bg:
     input:
-        "results/informative_read/{sample}_informative.bam",
+        fetch_informative_read,
     output:
         "results/bam2bg/{sample}_informative_{strand}.bg",
     log:

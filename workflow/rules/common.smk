@@ -976,3 +976,13 @@ if config.get("call_threeputrs", False):
 
 else:
     THREEPUTR_ANNOTATION = config.get("annotation")
+
+
+# Function to get the informative read for 3'-end calling
+def fetch_informative_read(wildcards):
+
+    if config.get("PE"):
+        return expand("results/informative_read/{sample}_informative.bam", sample = wildcards.sample)
+
+    else:
+        return expand("results/sf_reads/{sample}.s.bam", sample = wildcards.sample)
