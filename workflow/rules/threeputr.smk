@@ -19,9 +19,9 @@ rule get_informative_read:
         # Choose which mate is informative based on strandedness.
         #   - reverse-stranded: read 1 (flag 64) gives 3'-end info
         #   - forward-stranded: read 2 (flag 128) gives 3'-end info
-        informative_flag = lambda wildcards: (
+        informative_flag=lambda wildcards: (
             "64" if config["strandedness"] == "reverse" else "128"
-        )
+        ),
     shell:
         """
         samtools view -@ {threads} -hb -f {params.informative_flag} {input} -o {output} 1> {log} 2>&1
