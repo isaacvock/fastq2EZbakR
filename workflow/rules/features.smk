@@ -227,8 +227,7 @@ rule featurecounts_3utr:
         multiext(
             "results/featurecounts_3utr/{sample}",
             ".featureCounts",
-            ".featureCounts.summary",
-            ".featureCounts.jcounts",
+            ".featureCounts.summary"
         ),
         temp("results/featurecounts_3utr/{sample}.s.bam.featureCounts"),
     conda:
