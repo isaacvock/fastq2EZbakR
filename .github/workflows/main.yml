@@ -42,18 +42,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-    - name: Test workflow (3pUTR)
-      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
-      with:
-        directory: .test
-        snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/threeputr_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Clean up
-      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
-      with:
-        directory: .test
-        snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --delete-all-output --latency-wait 30"  
     - name: Test workflow (alt-output)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
@@ -108,3 +96,9 @@ jobs:
         directory: .test
         snakefile: workflow/Snakefile
         args: "--configfile .test/configs/nocB_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
+    - name: Test workflow (3pUTR)
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: workflow/Snakefile
+        args: "--configfile .test/configs/threeputr_config.yaml --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --latency-wait 30"
