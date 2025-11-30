@@ -171,6 +171,7 @@ rule junction_annotation:
         """
 
 
+# Experimental: assign reads to exon-exon junctions through ad-hoc not 100%-accurate approach
 rule featurecounts_eej:
     input:
         samples="results/sf_reads/{sample}.s.bam",
@@ -192,6 +193,7 @@ rule featurecounts_eej:
         "v7.2.0/bio/subread/featurecounts"
 
 
+# Experimental: assign reads to exon-intron junctions through ad-hoc not 100%-accurate approach
 rule featurecounts_eij:
     input:
         samples="results/sf_reads/{sample}.s.bam",
@@ -209,5 +211,32 @@ rule featurecounts_eij:
         extra=config["fc_eij_extra"] + FC_EIJ_PARAMS,
     log:
         "logs/featurecounts_eij/{sample}.log",
+    wrapper:
+        "v7.2.0/bio/subread/featurecounts"
+
+
+# Assign reads to 3'-UTRs using only single nucleotide of read (3'-end position) for assignment
+# TO-DO: Might need to add a step for paired-end data where only informative read is extracted
+# and passed to this step. Not sure for paired-end data how featureCounts' read2pos works (will it
+# use both read's single base?)
+rule featurecounts_3utr:
+    input:
+        samples="results/sf_reads/{sample}.s.bam",
+        annotation=THREEPUTR_ANNOTATION,
+    output:
+        multiext(
+            "results/featurecounts_3utr/{sample}",
+            ".featureCounts",
+            ".featureCounts.summary"
+        ),
+        temp("results/featurecounts_3utr/{sample}.s.bam.featureCounts"),
+    conda:
+        "../envs/genomictools.yaml"
+    params:
+        strand=FC_STRAND,
+        extra=FC_3UTR_PARAMS,
+    threads: 20
+    log:
+        "logs/featurecounts_3utr/{sample}.log",
     wrapper:
         "v7.2.0/bio/subread/featurecounts"

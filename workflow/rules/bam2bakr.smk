@@ -4,8 +4,8 @@
 
 ### TO-DO
 ## 1) Clean up sort/filter function; maybe reduce number of output files
-if config["bam2bakr"]:
-    if config["remove_tags"]:
+if config.get("bam2bakr", False):
+    if config.get("remove_tags", False):
 
         # Remove tags from bam files that can break HTSeq
         rule remove_tags:
@@ -201,7 +201,7 @@ rule cnt_muts:
         """
 
 
-if not config["lowRAM"]:
+if not config.get("lowRAM", False):
 
     # Merge mutation counts with feature assignment
     # Bit of a cheap hack here where I didn't want to deal with dynamically
@@ -215,24 +215,25 @@ if not config["lowRAM"]:
             cBout=temp("results/merge_features_and_muts/{sample}_cB.csv"),
             cUPout=temp("results/merge_features_and_muts/{sample}_cUP.csv"),
             Arrowout="results/arrow_dataset/sample={sample}/part-0.parquet",
-            duckdb = "results/merge_features_and_muts/duckdb/{sample}.duckdb",
+            duckdb="results/merge_features_and_muts/duckdb/{sample}.duckdb",
         params:
-            genes_included=config["features"]["genes"],
-            exons_included=config["features"]["exons"],
-            exonbins_included=config["features"]["exonic_bins"],
-            transcripts_included=config["features"]["transcripts"],
-            bamfiletranscripts_included=config["strategies"]["Transcripts"],
-            eej_included=config["features"]["eej"],
-            eij_included=config["features"]["eij"],
-            starjunc_included=config["features"]["junctions"],
+            genes_included=config.get("features").get("genes", True),
+            exons_included=config.get("features").get("exons", True),
+            exonbins_included=config.get("features").get("exonic_bins", False),
+            transcripts_included=config.get("features").get("transcripts", False),
+            bamfiletranscripts_included=config.get("features").get("tec", False),
+            eej_included=config.get("features").get("eej", False),
+            eij_included=config.get("features").get("eij", False),
+            threeputr_included=config.get("features").get("threeputr", False),
+            starjunc_included=config.get("features").get("junctions", False),
             rscript=workflow.source_path(
                 "../scripts/bam2bakR/merge_features_and_muts.R"
             ),
-            muttypes=config["mut_tracks"],
-            annotation=config["annotation"],
-            makecB=config["final_output"]["cB"],
-            makecUP=config["final_output"]["cUP"],
-            makeArrow=config["final_output"]["arrow"],
+            muttypes=config.get("mut_tracks", "TC"),
+            annotation=config.get("annotation"),
+            makecB=config.get("final_output").get("cB", True),
+            makecUP=config.get("final_output").get("cUP", False),
+            makeArrow=config.get("final_output").get("arrow", True),
             MaxMem=config.get("max_merge_mem", "8G"),
         log:
             "logs/merge_features_and_muts/{sample}.log",
@@ -245,7 +246,7 @@ if not config["lowRAM"]:
 
             {params.rscript} -g {params.genes_included} -e {params.exons_included} -b {params.exonbins_included} \
             -t {params.transcripts_included} --frombam {params.bamfiletranscripts_included} -o {output.output} -s {wildcards.sample} \
-            -j {params.eej_included} --starjunc {params.starjunc_included} --eij {params.eij_included} \
+            -j {params.eej_included} --threeputr {params.threeputr_included} --starjunc {params.starjunc_included} --eij {params.eij_included} \
             --annotation {params.annotation} -c {output.cBout} -m {params.muttypes} \
             --makecB {params.makecB} --makecUP {params.makecUP} --makeArrow {params.makeArrow} \
             --cUPout {output.cUPout} --Arrowout {output.Arrowout} --MaxMem {params.MaxMem} 1> {log} 2>&1

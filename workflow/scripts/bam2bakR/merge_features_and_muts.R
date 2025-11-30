@@ -38,7 +38,10 @@ option_list <- list(
               is mapped across."),
   make_option(c("--starjunc", type = "logical"),
               default = "FALSE",
-              help = "Whether reads were assigned to junctions via relevant STAR tags."),              
+              help = "Whether reads were assigned to junctions via relevant STAR tags."), 
+    make_option(c("--threeputr", type = "logical"),
+              default = "FALSE",
+              help = "Whether reads were assigned to 3'-UTRs."),              
   make_option(c("-j", "--eej", type = "logical"),
               default = "FALSE",
               help = "Whether reads were assigned to exon-exon junctions"),
@@ -210,6 +213,17 @@ if(opt$eij){
 }
 
 
+if(opt$threeputr){
+  
+  cat("Making 3'-UTR...")
+  
+  
+  register_feat("threeputr", glue("./results/featurecounts_3utr/{opt$sample}.s.bam.featureCounts"), "threepUTR")
+  
+  feature_vect <- c(feature_vect, "threepUTR")
+  
+}
+
 if(opt$starjunc){
   
   cat("Making junctions table...")
@@ -256,6 +270,11 @@ feat_catalogue <- list(
     select = "COALESCE(sj.junction_start, '__no_feature') AS junction_start,
               COALESCE(sj.junction_end,   '__no_feature') AS junction_end",
     join   = "LEFT JOIN starjunc      sj USING (qname)"
+  ),
+  threeputr = list(
+    flag   = "threeputr",
+    select = "COALESCE(tpu.threepUTR, '__no_feature') AS threepUTR",
+    join   = "LEFT JOIN threeputr       tpu USING (qname)"
   ),
   eej = list(
     flag   = "eej",                                

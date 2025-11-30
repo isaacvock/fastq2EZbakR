@@ -1,0 +1,12 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - samtools =1.22.1
+  - bedtools =2.31.1
+  - deeptools =3.5.6
+  - ucsc-bigwigmerge =482
+  - ucsc-bedgraphtobigwig =482
+  - subread =2.1.1
+  - gawk =5.3.1
