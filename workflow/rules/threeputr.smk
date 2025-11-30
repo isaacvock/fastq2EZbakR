@@ -63,9 +63,10 @@ rule bam_to_3pend_bg:
             fi
         fi
 
-        genomeCoverageBed -ibam {input} -bg -strand "$strand_symbol" -5 \
+        samtools sort -@ {threads} {input} 2> {log} \
+        | genomeCoverageBed -ibam - -bg -strand "$strand_symbol" -5 2>> {log} \
         | awk -v T="$T" -v OFS='\t' '$4>=T' \
-        | LC_COLLATE=C sort -k1,1 -k2,2n > {output} 2>{log}
+        | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
         """
 
 
@@ -74,7 +75,7 @@ rule merge_3pend_bg:
     input:
         expand("results/bam2bg/{sample}_informative_{{strand}}.bg", sample=SAMP_NAMES),
     output:
-        "results/merge_3pend_bg/merged_3pend_{strand}.bg",
+        temp("results/merge_3pend_bg/merged_3pend_{strand}.bg"),
     params:
         strandedness=config.get("strandedness", "reverse"),
     conda:
@@ -112,7 +113,7 @@ rule cluster_PAS_bedtools:
     input:
         "results/merge_3pend_bg/merged_3pend_{strand}.bg",
     output:
-        "results/call_PAS/bedtools_clusters_{strand}.bg",
+        temp("results/call_PAS/bedtools_clusters_{strand}.bg"),
     log:
         "logs/call_PAS_bedtools/bedtools_cluster_{strand}.log",
     params:
