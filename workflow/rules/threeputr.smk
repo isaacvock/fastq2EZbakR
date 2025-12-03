@@ -36,7 +36,7 @@ rule bam_to_3pend_bg:
     output:
         "results/bam2bg/{sample}_informative_{strand}.bg",
     log:
-        "logs/bam2_3pend_bg/{sample}_{strand}.log",
+        "logs/bam_to_3pend_bg/{sample}_{strand}.log",
     conda:
         "../envs/genomictools.yaml"
     params:
@@ -52,19 +52,23 @@ rule bam_to_3pend_bg:
         if [[ "$strand" == "plus" ]]; then
             if [[ "$library"  == "reverse" ]]; then
                 strand_symbol="-"
+                pos_symbol="-5"
             else
                 strand_symbol="+"
+                pos_symbol="-3"
             fi
         elif [[ "$strand" == "minus" ]]; then
             if [[ "$library"  == "reverse" ]]; then
                 strand_symbol="+"
+                pos_symbol="-5"
             else
                 strand_symbol="-"
+                pos_symbol="-3"
             fi
         fi
 
         samtools sort -@ {threads} {input} 2> {log} \
-        | genomeCoverageBed -ibam - -bg -strand "$strand_symbol" -5 2>> {log} \
+        | genomeCoverageBed -ibam - -bg -strand "$strand_symbol" "$pos_symbol" 2>> {log} \
         | awk -v T="$T" -v OFS='\t' '$4>=T' \
         | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
         """
