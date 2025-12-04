@@ -306,7 +306,7 @@ suffixes <- sapply(
 ) %>%
   unlist()
 
-utr_ids <- paste0(peak-genes, "_utr_", suffixes)
+utr_ids <- paste0(peak_genes, "_utr_", suffixes)
 
 ThreePUTR_gr <- GenomicRanges::GRanges(
   seqnames = Rle(peaks_filtered$seqnames),

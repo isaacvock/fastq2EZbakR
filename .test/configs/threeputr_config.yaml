@@ -11,28 +11,43 @@
 #
 ####### PARAMETERS YOU NEED TO SET #######
 
+
+# Download fastq files from SRA? If True, you don't need to specify paths to fastq files under samples.
+# In fact, samples will go completely unused in this case
+# NOTE: check if the fastq files you are downloading are all
+# paired end or single end, and make sure to set PE accordingly
+# below.
+download_fastqs: False
+
+# List of SRA accession codes to download fastq files from
+# Only relevant if download_fastqs is True
+sra_accessions: ["SRR24994162", "SRR24994161"]
+
+
+# Providing bam files? If yes, set to True. Will skip all fastq-related steps (trimming, alignment, etc.)
+bam2bakr: False
+
 ## Paths to data to process
 # path to directory containing fastq files if bam2bakr is False
   # fastq files can be either gzipped or unzipped
   # Each set of fastq files must be in a different directory
-# path to bam files if bam2bakr is True
+# path to individual bam files if bam2bakr is True
 samples:
-    WT_1: data/WT1
-    WT_2: data/WT2
-    WT_ctl: data/WTctl
+    WT_1: data/ThreePseq_1
+    WT_2: data/ThreePseq_2
 
-## example of what samples will look like for fastq input
+## example of what samples will look like for bam file input
 # samples:
-#   WT_1: data/fastq/WT_1
-#   WT_2: data/fastq/WT_2
-#   WT_ctl: data/fastq/WT_ctl
-#   KO_1: data/fastq/KO_1
-#   KO_2: data/fastq/KO_2
-#   KO_ctl: data/fastq/KO_ctl
+#   WT_1: data/bams/WT_1.bam
+#   WT_2: data/bams/WT_2.bam
+#   WT_ctl: data/bams/WT_ctl.bam
+#   KO_1: data/bams/KO_1.bam
+#   KO_2: data/bams/KO_2.bam
+#   KO_ctl: data/bams/KO_ctl.bam
 
 
 # -s4U control sample IDs
-control_samples: ['WT_ctl']
+control_samples: []
 
 # Paired end? 
   # Set to True or False, no double quotes
@@ -50,7 +65,7 @@ annotation: data/annotation/genome.gtf
   # Options are:
     # 1) star
     # 2) hisat2
-aligner: "hisat2"
+aligner: "star"
 
 
 # Path to directory containing indices
@@ -61,97 +76,146 @@ aligner: "hisat2"
   # so probably better to avoid specifying a path there that might
   # clash with the names of one of the other automatically created
   # directories). 
+  # If you aren't providing this, directory must not exist at the time
+  # you launch the pipeline with `snakemake ...`, or else Snakemake won't
+  # know to create it.
 indices: star_index
 
 
 # Strandedness
   # set to "reverse", "yes", or "no"
+  # Instead of "yes", can now use "forward" as well (both will have the same result)
   # reverse means that read 2 represents 5' to 3' sequence of original RNA (read 1 thus represents its reverse complement)
   # yes means that read 1 represents 5' to 3' sequence of original RNA
   # no means unstranded
-  # Used by HTSeq (see https://htseq.readthedocs.io/en/master/htseqcount.html for details)
-strandedness: "reverse"
+  # Used by featureCounts, though terminology comes from HTSeq
+strandedness: "forward"
 
 
-# Augmentative analysis strategies
-  # Transcripts:
-    # Only compatible with STAR alignment.
-    # Final cB will have a column named "transcripts" which will indicate the set of transcripts that each read is 
-    # compatible with. This can be used in conjunction with bakR to perform transcript-isoform specific kinetic parameter
-    # estimates.
-  # FlatStacks:
-    # Flatten annotation with DEXSeq and have a column in the final cB correspond to assignment of reads to exonic
-    # bins. Useful to identify certain isoform-specific effects.
-  # RSEM+:
-    # Onloy compatible with STAR alignment.
-    # Estimate kinetic parameters for transcript isoforms by combining RSEM quantification with bakR's statistical model.
-strategies:
-    RSEMp: False
-    Transcripts: False
-
-
-# Features to quantify
+# Features to assign reads to
+  # genes = anywhere in an annotated gene body
+  # exons = in exclusively exonic regions of a gene
+  # tec = set of transcripts with which read overlaps; TEC = transcript equivalence class
+  # exonic_bins = exonic regions as defined in DEXSeq paper (Anders et al., 2012)
+  # junctions = exon-exon junctions. Only compatible with STAR-based alignment
+    # as STAR's unique jI and jM bam file tags are required
+  # threeputr = 3'-UTRs. Should only be used with 3'-end sequencing data.
+    # This option is paired with `call_threeputrs` which determines whether or not
+    # 3' UTRs are called de novo using your data or whether an annotation of 3'UTRs that
+    # you provide is used
+  # eej = exon-exon junctions. Less accurate than junctions but compatible with any
+    # bam file. A new GTF file will be created with annotation for the junction_IDs
+    # that will show up in the final cB
+  # eij = exon-intron junctions. A new GTF file will be created with annotation for the junction_IDs
+    # that will show up in the final cB
 features:
     genes: True
     exons: True
-    transcripts: False
+    tec: False
     exonic_bins: False
     junctions: False
-    eij: False
+    threeputr: True
     eej: False
-
-####### OPTIONAL PARAMETERS FOR EACH TOOL USED #######
-
-
-##### PARAMETERS MOST WORTH DOUBLE CHECKING #####
-
-# Adapters to pass to fastp 
-  # Not strictly necessary as fastp can autodetect. Autodetection is more accurate for paired-end data
-  # For paired-end data with widely used Illumina TruSeq adapters, this could be: 
-  # "--adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
-fastp_adapters: ""
-
-
-# Path to flattened annotation 
-# Will be created if not already present
-# Only relevant if using FlatStacks
-flat_annotation: "data/annotation/flat.gtf"
-
-# Track site-specific mutational information
-mutpos: False
-
-# Normalize sequencing tracks?
-normalize: True
+    eij: False
 
 
 
-# Types of mutations to make tracks for otherwise
+####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
+
+
+### Parameters that are only relevant if threeputr == True
+
+# If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
+# I call_threeputrs == False, then your provided GTF (path specified in `annotation`)
+  # must contain values of `3UTR` in a field (column) called "type".
+call_threeputrs: True
+
+# Only relevant if call_threeputrs == True
+# If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
+# 3'-ends will be filtered out
+only_annotated_threeputrs: False
+
+# Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
+# Filter out de novo called 3'-UTRs near a polyA stretch of length false_polyA_len (i.e., could be case of mis-priming)
+# Annotated 3' UTRs will always be kept
+false_polyA_len: 7
+
+# Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
+# Filter out de novo called 3'-UTRs not near a CPA consensus sequence (AAUAAA)
+# Annotated 3' UTRs will always be kept
+require_CPA_site: True
+
+# Minimum coverage in a cluster of 3'-ends for it to make it to the annotation
+# = total number of reads across all samples
+# If you don't uncomment this parameter, default is 20 * number of samples
+# cluster_coverage: 100
+
+# Minimum fractional usage (# of reads / sum(# of reads for all clusters in gene) )
+# of a cluster for it to make it to the annotation
+cluster_fxn: 0.0
+
+# Length by which to extend either end of genes when finding genes that a cluster overlaps with
+extension: 0
+
+
+### What final output do you want pipeline to create?
+  # cB = standard cB file tracking number of mutations and number of mutable reference nucleotides in each read.
+  # cUP = remove the mutable reference nucleotide count and instead compute the average of this value for reads
+  #         with the same mutational content. This is orders of magnitude more compressed than a cB file (typically
+  #         around 100x smaller), and is still compatible with EZbakR. Downside is the slight information loss that
+  #         this compression leads to.
+  # arrow = Partitioned database of parquet files, in the format necessary to pass to EZbakR.
+  # 
+  # At least one of these should be set to True.
+final_output:
+  cB: True
+  cUP: False
+  arrow: True
+
+
+### Types of mutations to make tracks for otherwise
   # Comma separated string of mutation type
   # Examples:
     # "TC"
-      # count T-to-C mutations
+      # counts T-to-C mutations
     # "TC,GA"
       # counts T-to-C and G-to-A mutations
 mut_tracks: "TC"
 
 
-# Minimum base quality to call mutation
-minqual: 40
+### How much memory can the merge features and muts step use?
+max_merge_mem: "8G"
 
 
-# Add a full-gene "transcript" to annotation used for STAR + RSEM to quantify pre-mRNA.
-  # This is a nice way to "regress out" pre-mRNA abundance and to identify
-  # problematic gene annotations (e.g., regions where estimated pre-mRNA abundance
-  # is as high if not higher than appreciably expressed isoforms).
-  #
-  # The annotation with the full-gene "transcript" will only be used for STAR's alignment
-  # and RSEM quantification. The full-gene transcript will not be a feature to which
-  # reads are assigned by featureCounts.
-quantify_premRNA: False
+### Track normalization parameters
+
+# Normalize sequencing tracks?
+normalize: True
 
 # String common to spike-in gene_ids in annotation gtf
   # If you have no spike-ins, then this should be "\"\"", i.e., an empty string ("")
+  # Used for normalization of tracks. Thus, only relevant if normalize == True
 spikename: "\"\""
+
+# Only use exonic reads for normalization? If not, then all reads mapping to annotated genes will be used
+use_exons_only: True
+
+
+### Miscellaneous parameters
+
+# Skip adapter trimming? 
+  # If True, will skip fastp step
+skip_trimming: False
+
+
+# Path to flattened annotation 
+  # Will be created if not already present
+  # Only relevant if assigning reads to exonic_bins
+flat_annotation: "data/annotation/flat.gtf"
+
+
+# Minimum base quality required to call mutation
+minqual: 40
 
 
 # Are you using the Windows subsystem for Linux?
@@ -159,20 +223,24 @@ spikename: "\"\""
 WSL: False
 
 
-# Are there jI, jM, XF, GF, or EF tags in provided bam files?
-  # These will break HTSeq or lead to unexpected behavior and will
-  # thus be removed prior to running HTSeq.
-  # NOTE: these tags will not be removed from the input bam files,
-  # just from processed bam files generated by fastq2EZbakR
-remove_tags: False
+# Track site-specific mutational content?
+mutpos: False
 
 
-# Merge mutation counts and feature assignments in a RAM-efficient manner?
-  # Downside is that it's a bit slower
-lowRAM: False
+# Make colored sequencing tracks?
+make_tracks: True
 
 
-##### OTHER FEATURECOUNTS PARAMETERS #####
+# Use RSEM to quantify transcript isoform abundances?
+  # Only relevant if aligner = 'star' and fastq files are
+  # provided as input
+run_rsem: True
+
+
+
+####### OPTIONAL PARAMETERS FOR THE VARIOUS TOOLS AND SCRIPTS USED #######
+
+##### FEATURECOUNTS PARAMETERS #####
 # Parameters automatically specified:
   # Genes: -R -f -g gene_id -t transcript
   # Exons: -R -g gene_id -J
@@ -181,33 +249,45 @@ lowRAM: False
 # If PE = True, then "-p --countReadPairs" is also automatically set
 #
 # !!DO NOT REDUNDANTLY SPECIFY AUTOMATICALLY SPECIFIED PARAMETERS!!
+# Defaults suggested:
+# 1) Set -M for all cases. Non-primary multi-mapping reads are filtered
+# prior to running featureCounts, so we want to count all reads. There
+# seems to be a bug in featureCounts that can cause some primary, multi-mapping
+# reads getting unassigned. Setting -M avoids this problem.
+# 2) Set --nonOverlap to 0 for exon assignment. This is the key to exonic assignment,
+# ensuring that reads overlapping any non-exonic region are unassigned to tne xonic feature (XF).
+# Unfortunately, soft-clipping counts as non-assignment, so it is best to either turn off soft-clipping
+# in your aligner (which is done in the defaults for STAR and HISAT2 below) or increase the 
+# nonOverlap parameter to allow some leniency
 
 # Parameters for assignment of reads to genes
-fc_genes_extra: "--primary"
+fc_genes_extra: "--nonOverlap 0"
 
 # Parameters for assignment of reads to exons
-fc_exons_extra: "--nonOverlap 0 --primary"
+fc_exons_extra: "--nonOverlap 0"
 
 # Parameters for assignment of reads to exonbins
-fc_exonbins_extra: "--primary"
+fc_exonbins_extra: "-M"
 
 # Parameters for assignment of reads to exon-exon junctions
-fc_eej_extra: "--primary"
+fc_eej_extra: "-M"
 
 # Parameters for assignment of reads to exon-intron junctions
-fc_eij_extra: "--primary"
-
-##### JUNCTION ANNOTATION PARAMETERS #####
-
-junction_annotation_params: ""
+fc_eij_extra: "-M"
 
 
-##### OTHER FASTP PARAMETERS #####
+##### FASTP PARAMETERS #####
   # See https://github.com/OpenGene/fastp for details
+
+# Adapters to pass to fastp 
+  # Not strictly necessary as fastp can autodetect adapters. Autodetection is more accurate for paired-end data though.
+  # For paired-end data with widely used Illumina TruSeq adapters, this could be: 
+  # "--adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
+fastp_adapters: ""
+
 
 # Optional parameters to set for fastp
 fastp_parameters: "" 
-
 
 
 ##### FASTQC PARAMETERS #####
@@ -222,7 +302,7 @@ fastqc_params: ""
 
 # Optional parameters to set for star index
   # --sjdbGTFfile is automatically set to be the provided annotation file
-star_index_params: "--sjdbOverhang 99"
+star_index_params: ""
 
 
 # SAM tags to add to alignment
@@ -234,9 +314,17 @@ star_sam_tags: ["NH", "HI", "AS", "NM", "MD", "nM"]
   # --outSAMattributes will also be set and provided the tags specified in `star_sam_tags`, overwriting whatever is set here
   # Finally, --outSAMType will be force set to BAM SortedByCoordinate, overwriting whatever is set here
   # We suggest turning off soft-clipping to improve assignment of reads to exons
-star_align_params: "--alignEndsType Local"
+star_align_params: "--alignEndsType EndToEnd --outFilterType BySJout --outFilterMismatchNmax 20 --outFilterScoreMinOverLread 0.4 --outFilterMatchNminOverLread 0.4"
 
 
+
+##### BCFTOOLS PARAMETERS #####
+
+# Optional parameters to pass to `bcftools mpileup`
+bcftools_mpileup_params: ""
+
+# Optional parameters to pass to `bcftools call`
+bcftools_call_params: ""
 
 ##### HISAT2 PARAMETERS #####
 
@@ -249,7 +337,6 @@ hisat2_index_params: ""
     # DON'T REDUNDANTLY SPECIFY --rna-strandedness HERE!!
   # We suggest turning off soft-clipping to improve assignment of reads to exons
 hisat2_align_params: "--no-softclip"
-
 
 
 # Index base name. If not specified, defaults to "hisat2_index"
@@ -267,29 +354,123 @@ rsem_index_params: ""
 rsem_quant_params: ""
 
 
-##### RSEM+ parameters #####
+##### FASTERQDUMP PARAMETERS ######
 
-# New read mutation rates
-# If set to -1, then rates will be estimated by model
-# Set rate to 0 if -s4U sample
-pnews:
-    WT_1: 0.05 
-    WT_2: 0.05
-    WT_ctl: 0
+# Optional parameters to pass to fasterq_dump if sra_download = True
+fasterq_dump_extras: "--skip-technical"
 
-# Old read mutation rates
-# If set to -1, then rates will be estimated by model
-# Set rate to 0 if -s4U sample
-polds:
-    WT_1: 0.001
-    WT_2: 0.001
-    WT_ctl: 0
+
 
 
 ##### SITE-SPECIFIC MUTATION CALLING PARAMETERS #####
 
+# Minimum coverage for site to make it into filtered cU
 min_pos_coverage: 1
-max_pos_coverage: 100000
+
+# Maximum coverage allowed for site that makes it into filtered cU
+max_pos_coverage: 10000000
+
+
+
+##### JUNCTION ANNOTATION PARAMETERS #####
+
+# Currently no adjustable parameters for this, but eventually there
+# will be.
+junction_annotation_params: ""
+
+
+
+##### MULTIQC PARAMETERS #####
+
+# Optional parameters to pass to multiQC
+multiqc_extra: ""
+
+
+##### De novo 3'-UTR CALLING PARAMETERS #####
+
+### Bedtools parameters
+
+# How many reads does a 3'UTR need in at least one sample to make it to the final annotation
+coverage_cutoff: 5
+
+# -d parameter of bedtools cluster; sets distance between peaks to be clustered
+bedtools_cluster_distance: 20
+
+
+### Deeptools bamCoverge parameters
+deeptools_params: ""
+
+
+##############################
+##### DEFUNCT PARAMETERS #####
+##############################
+# These currently do nothing, but might come back in future releases
+
+# Add a full-gene "transcript" to annotation used for STAR + RSEM to quantify pre-mRNA.
+  # This is a nice way to "regress out" pre-mRNA abundance and to identify
+  # problematic gene annotations (e.g., regions where estimated pre-mRNA abundance
+  # is as high if not higher than appreciably expressed isoforms).
+  #
+  # The annotation with the full-gene "transcript" will only be used for STAR's alignment
+  # and RSEM quantification. The full-gene transcript will not be a feature to which
+  # reads are assigned by featureCounts.
+  # 
+  # This will only have an impact if config["aligner"] is set to "star".
+quantify_premRNA: False
+  # Defunct as this currently has no impact on RSEM quantification
+
+
+# Are there jI, jM, XF, GF, or EF tags in provided bam files?
+  # These will break HTSeq or lead to unexpected behavior and will
+  # thus be removed prior to running HTSeq.
+  # NOTE: these tags will not be removed from the input bam files,
+  # just from processed bam files generated by fastq2EZbakR
+remove_tags: False
+  # Defunct as HTSeq is no longer used and these tags cause no problems
+  # to pipeline.
+
+##### SALMON PARAMETERS #####
+# NOT YET IMPLEMENTED
+
+# Use Salmon for quantification?
+use_salmon: False
+
+# Path to directory containing Salmon indices
+  # Created automatically if not already present
+salmon_indices: "indices/salmon/"
+
+# Determing if and how to make decoy-aware index for salmon
+  # If make_decoy True, then a decoy-aware index will be made. WARNING: WILL REQUIRE LOTS OF RAM!! >100GB FOR HUMAN GENOME!!
+  # There are two options for how to make this index (see Salmon docs for details: https://salmon.readthedocs.io/en/latest/salmon.html)
+    # If entire_genome is True, then entire genome will be used. This provides a more comprehensive set of decoys at the cost of
+    # requiring more RAM and time to build the index.
+    # 
+    # If entire_genome if False, then "a set of decoy sequences will be identified
+    # by mapping annotated transcripts you wish to index against a hard-masked version
+    # of the organism's genome." (quoted from documentation linked above). This leads to 
+    # comparable performance as a whole genome decoy but is much less RAM intensive.
+decoy_settings:
+  make_decoy: True
+  entire_genome: False
+
+# Optional parameters for generateDecoyTranscriptome.sh script
+salmon_generateDecoy_params: ""
+
+# Read directionality
+directionality: "I"
+
+# Optional parameters for gffread (transcriptome fasta creation)
+gffread_extra: ""
+
+# Optional parameters for Salmon indexing
+salmon_index_params: ""
+
+# Optional parameters for Salmon quantification
+salmon_quant_params: ""
+
+
+
+
 
 ##### LINKS TO SNAKEMAKE WRAPPERS USED #####
   # Can be useful to see how optional parameters get passed to these tools
