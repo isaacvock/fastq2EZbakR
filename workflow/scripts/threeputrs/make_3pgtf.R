@@ -292,10 +292,12 @@ peaks_filtered <- clusters_annotated %>%
   dplyr::filter(
     coverage >= coverage_filter &
       fxn_usage >= fxn_filter
+  ) %>%
+  dplyr::arrange(
+    gene_id
   )
 
 peak_genes <- peaks_filtered$gene_id
-peak_genes <- sort(peak_genes)
 
 rle_out <- rle(peak_genes)
 runs <- rle_out$lengths
