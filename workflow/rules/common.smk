@@ -961,14 +961,14 @@ if config.get("aligner") == "star":
 
 if config["PE"]:
     if config.get("strandedness") == "reverse":
-        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 5"
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 5 -g utr_id"
     else:
-        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 3"
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 3 -g utr_id"
 else:
     if config.get("strandedness") == "reverse":
-        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 5"
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 5 -g utr_id"
     else:
-        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 3"
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 3 -g utr_id"
 
 
 if config.get("call_threeputrs", False):

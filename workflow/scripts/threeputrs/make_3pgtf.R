@@ -294,6 +294,20 @@ peaks_filtered <- clusters_annotated %>%
       fxn_usage >= fxn_filter
   )
 
+peak_genes <- peaks_filtered$gene_id
+peak_genes <- sort(peak_genes)
+
+rle_out <- rle(peak_genes)
+runs <- rle_out$lengths
+
+suffixes <- sapply(
+  runs,
+  function (x) 1:x
+) %>%
+  unlist()
+
+utr_ids <- paste0(peak-genes, "_utr_", suffixes)
+
 ThreePUTR_gr <- GenomicRanges::GRanges(
   seqnames = Rle(peaks_filtered$seqnames),
   ranges = IRanges(
@@ -302,6 +316,7 @@ ThreePUTR_gr <- GenomicRanges::GRanges(
   ),
   strand  = peaks_filtered$strand,
   gene_id = peaks_filtered$gene_id,
+  utr_id = utr_ids,
   type    = "3UTR"
 )
 
