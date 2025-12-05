@@ -33,9 +33,8 @@ bam2bakr: False
   # Each set of fastq files must be in a different directory
 # path to individual bam files if bam2bakr is True
 samples:
-    WT_1: data/WT1
-    WT_2: data/WT2
-    WT_ctl: data/WTctl
+    WT_1: data/ThreePseq_1
+    WT_2: data/ThreePseq_2
 
 ## example of what samples will look like for bam file input
 # samples:
@@ -48,11 +47,11 @@ samples:
 
 
 # -s4U control sample IDs
-control_samples: ['WT_ctl']
+control_samples: []
 
 # Paired end? 
   # Set to True or False, no double quotes
-PE: True
+PE: False
 
 # Path to genome fasta file
 genome: data/genome/genome.fasta
@@ -66,7 +65,7 @@ annotation: data/annotation/genome.gtf
   # Options are:
     # 1) star
     # 2) hisat2
-aligner: "hisat2"
+aligner: "star"
 
 
 # Path to directory containing indices
@@ -80,7 +79,7 @@ aligner: "hisat2"
   # If you aren't providing this, directory must not exist at the time
   # you launch the pipeline with `snakemake ...`, or else Snakemake won't
   # know to create it.
-indices: hisat2_index
+indices: star_index
 
 
 # Strandedness
@@ -90,7 +89,7 @@ indices: hisat2_index
   # yes means that read 1 represents 5' to 3' sequence of original RNA
   # no means unstranded
   # Used by featureCounts, though terminology comes from HTSeq
-strandedness: "reverse"
+strandedness: "forward"
 
 
 # Features to assign reads to
@@ -115,7 +114,7 @@ features:
     tec: False
     exonic_bins: False
     junctions: False
-    threeputr: False
+    threeputr: True
     eej: False
     eij: False
 
@@ -134,7 +133,7 @@ call_threeputrs: True
 # Only relevant if call_threeputrs == True
 # If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
 # 3'-ends will be filtered out
-only_annotated_threeputrs: True
+only_annotated_threeputrs: False
 
 # Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
 # Filter out de novo called 3'-UTRs near a polyA stretch of length false_polyA_len (i.e., could be case of mis-priming)
@@ -144,7 +143,7 @@ false_polyA_len: 7
 # Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
 # Filter out de novo called 3'-UTRs not near a CPA consensus sequence (AAUAAA)
 # Annotated 3' UTRs will always be kept
-require_CPA_site: False
+require_CPA_site: True
 
 # Minimum coverage in a cluster of 3'-ends for it to make it to the annotation
 # = total number of reads across all samples
@@ -392,7 +391,7 @@ multiqc_extra: ""
 ### Bedtools parameters
 
 # How many reads does a 3'UTR need in at least one sample to make it to the final annotation
-coverage_cutoff: 25
+coverage_cutoff: 5
 
 # -d parameter of bedtools cluster; sets distance between peaks to be clustered
 bedtools_cluster_distance: 20

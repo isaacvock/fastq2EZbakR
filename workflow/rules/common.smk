@@ -19,6 +19,8 @@ if config["download_fastqs"]:
 else:
     SAMP_NAMES = list(config["samples"].keys())
 
+NUM_SAMPS = len(SAMP_NAMES)
+
 
 # Directory containing index; used in case of certain aligners
 INDEX_DIR = config["indices"]
@@ -122,6 +124,9 @@ if config["features"]["junctions"]:
     keepcols.append("junction_start")
     keepcols.append("junction_end")
 
+if config.get("features").get("threeputr", False):
+    keepcols.append("threepUTR")
+
 if config["features"]["eij"]:
     keepcols.append("ei_junction_id")
 
@@ -157,7 +162,12 @@ def get_fastqc_read(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             readID = int(wildcards.read) - 1
             return fastq_files[readID]
 
@@ -181,7 +191,12 @@ def get_fastq_r1(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             return fastq_files[0]
 
     elif config["PE"]:
@@ -198,7 +213,12 @@ def get_fastq_r2(wildcards):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             return fastq_files[1]
 
     elif config["PE"]:
@@ -231,7 +251,12 @@ def get_hisat2_reads(wildcards, READS=READS):
 
         else:
             fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+            fastq_files = sorted(
+                set(
+                    glob.glob(f"{fastq_path}/*.fastq*")
+                    + glob.glob(f"{fastq_path}/*.fq*")
+                )
+            )
             return fastq_files
 
     else:
@@ -467,7 +492,7 @@ def get_merge_input(wildcards):
         expand("results/counts/{SID}_counts.csv.gz", SID=wildcards.sample)
     )
 
-    if config["features"]["genes"]:
+    if config.get("features").get("genes", True):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_genes/{SID}.s.bam.featureCounts",
@@ -475,7 +500,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["exons"]:
+    if config.get("features").get("exons", True):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_exons/{SID}.s.bam.featureCounts",
@@ -483,7 +508,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["transcripts"]:
+    if config.get("features").get("transcripts", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_transcripts/{SID}.s.bam.featureCounts",
@@ -491,7 +516,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["exonic_bins"]:
+    if config.get("features").get("exonic_bins", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_exonbins/{SID}.s.bam.featureCounts",
@@ -499,17 +524,25 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["tec"]:
+    if config.get("features").get("tec", False):
         MERGE_INPUT.extend(
             expand("results/read_to_transcripts/{SID}.csv", SID=wildcards.sample)
         )
 
-    if config["features"]["junctions"]:
+    if config.get("features").get("junctions", False):
         MERGE_INPUT.extend(
             expand("results/read_to_junctions/{SID}.csv.gz", SID=wildcards.sample)
         )
 
-    if config["features"]["eej"]:
+    if config.get("features").get("threeputr", False):
+        MERGE_INPUT.extend(
+            expand(
+                "results/featurecounts_3utr/{SID}.s.bam.featureCounts",
+                SID=wildcards.sample,
+            )
+        )
+
+    if config.get("features").get("eej", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_eej/{SID}.s.bam.featureCounts",
@@ -517,7 +550,7 @@ def get_merge_input(wildcards):
             )
         )
 
-    if config["features"]["eij"]:
+    if config.get("features").get("eij", False):
         MERGE_INPUT.extend(
             expand(
                 "results/featurecounts_eij/{SID}.s.bam.featureCounts",
@@ -734,6 +767,9 @@ if config["features"]["junctions"]:
     colnames.append("junction_start")
     colnames.append("junction_end")
 
+if config.get("features").get("threeputr", False):
+    colnames.append("threepUTR")
+
 
 if config["features"]["eej"]:
     colnames.append("ee_junction_id")
@@ -919,3 +955,35 @@ if config.get("aligner") == "star":
     MULTIQC_INPUT.append(
         expand("results/align/{sample}-Log.final.out", sample=SAMP_NAMES)
     )
+
+
+##### 3'-UTR FEATURECOUNTS PARAMETER #####
+
+if config["PE"]:
+    if config.get("strandedness") == "reverse":
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 5 -g utr_id"
+    else:
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 3 -g utr_id"
+else:
+    if config.get("strandedness") == "reverse":
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 5 -g utr_id"
+    else:
+        FC_3UTR_PARAMS = "-R CORE -t 3UTR -O --read2pos 3 -g utr_id"
+
+
+if config.get("call_threeputrs", False):
+    THREEPUTR_ANNOTATION = "annotations/threepUTR_annotation.gtf"
+
+else:
+    THREEPUTR_ANNOTATION = config.get("annotation")
+
+
+# Function to get the informative read for 3'-end calling
+def fetch_informative_read(wildcards):
+    if config.get("PE"):
+        return expand(
+            "results/informative_read/{sample}_informative.bam", sample=wildcards.sample
+        )
+
+    else:
+        return expand("results/sf_reads/{sample}.s.bam", sample=wildcards.sample)
