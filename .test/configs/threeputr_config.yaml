@@ -51,7 +51,7 @@ control_samples: []
 
 # Paired end? 
   # Set to True or False, no double quotes
-PE: True
+PE: False
 
 # Path to genome fasta file
 genome: data/genome/genome.fasta
