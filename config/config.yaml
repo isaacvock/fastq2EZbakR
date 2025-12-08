@@ -161,6 +161,16 @@ cluster_fxn: 0.0
 # Length by which to extend either end of genes when finding genes that a cluster overlaps with
 extension: 0
 
+# How many reads does a 3'UTR need in at least one sample to make it to the final annotation
+coverage_cutoff: 25
+
+# -d parameter of bedtools cluster; sets distance between peaks to be clustered
+bedtools_cluster_distance: 20
+
+
+### Deeptools bamCoverge parameters
+deeptools_params: ""
+
 
 ### What final output do you want pipeline to create?
   # cB = standard cB file tracking number of mutations and number of mutable reference nucleotides in each read.
@@ -388,21 +398,6 @@ junction_annotation_params: ""
 
 # Optional parameters to pass to multiQC
 multiqc_extra: ""
-
-
-##### De novo 3'-UTR CALLING PARAMETERS #####
-
-### Bedtools parameters
-
-# How many reads does a 3'UTR need in at least one sample to make it to the final annotation
-coverage_cutoff: 25
-
-# -d parameter of bedtools cluster; sets distance between peaks to be clustered
-bedtools_cluster_distance: 20
-
-
-### Deeptools bamCoverge parameters
-deeptools_params: ""
 
 
 ##############################
