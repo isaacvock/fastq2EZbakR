@@ -164,7 +164,7 @@ extension: 0
 # How many reads does a 3'UTR need in at least one sample to make it to the final annotation
 coverage_cutoff: 25
 
-# -d parameter of bedtools cluster; sets distance between peaks to be clustered
+# -d parameter of bedtools cluster; sets distance between 3'-end peaks to be clustered into one called 3'-end
 bedtools_cluster_distance: 20
 
 
