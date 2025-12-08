@@ -2,6 +2,8 @@
 
 In the `config/` directory you will find a file named `config.yaml`. If you open it in a text editor, you will see several parameters which you can alter. These parameters are split into three major sections, the first being those that are very important to check and alter as necessary, the second being parameters whose default values are worth assessing but that are designed to be reasonable in most settings. and the third that allow you to specify optional parameters in tools used by fastq2EZbakR (once again, with hopefully reasonable defaults set).
 
+See [here](tips.md) for a summary of non-default parameters in the config that are worth tweaking for your particular use case.
+
 ### Parameters you need to set
 
 At the top of the config file, you can specify whether or not you want to download FASTQ files from SRA:
@@ -91,6 +93,7 @@ features:
     tec: False
     exonic_bins: False
     junctions: False
+    threeputr: False
     eej: False
     eij: False
 ```
@@ -102,6 +105,7 @@ These are:
 * `tec`: Only compatible with using fastq2EZbakR for alignment, and using STAR as the aligner. Assigns reads to transcript equivalence classes (TECs), which is the set of transcript isoforms with which a read is compatible.
 * `exonic_bins`: Assignment of reads to exonic bins, as defined in the original [DEXSeq paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3460195/). Best to pair with `Transcripts` or `exons` to filter out reads overlapping intronic regions, as this assignment strategy works like `genes` an will assign reads regardless of whether they overlap any non-exonic regions.
 * `junctions`: Only compatible with STAR alignment. Uses the custom jI and jM tags to identify the set of exon-exon junctions a read overlaps. Thus, if you are providing your own BAM files, these tags need to have been included to use this feature assignment strategy.
+* `threeputr`: Only compatible with 3'-end sequencing data. Uses either 1) annotated features of type "3UTR" in the provided annotation to assign reads to 3'-ends or 2) builds an annotation of 3'-ends from your data. See [here](features.md) for more details.
 * `eej`: A hack that attempts to mimic `junctions` but in a way that does not require STAR alignment or custom tags. A custom annotation is created automatically that includes annotation of exon-exon junction reads, that if a read aligns to, and if the `sj` column always included in the output cB is TRUE, indicates that the read likely overlapped the respective exon-exon junction.
 * `eei`: Similar to `eej`, hacky strategy to use featureCounts to assign reads to exon-intron junctions. Use this and `eej` with caution.
 
