@@ -118,7 +118,7 @@ features:
     tec: False
     exonic_bins: False
     junctions: False
-    threeputr: True
+    threeputr: False
     eej: False
     eij: False
 
