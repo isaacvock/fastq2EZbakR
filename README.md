@@ -116,5 +116,3 @@ snakemake --cores all --use-conda --rerun-triggers mtime --keep-going
 ```
 
 The difference is that now instead of using Snakedeploy (which you no longer even need to install), you clone the repo locally and copy over the workflow and config directories to wherever you want to run the pipeline. The downside of this approach is that if I make changes to the pipeline that you want to adopt, you will have to manually "update" the pipeline by going to the fastq2EZbakR directory and running `git pull`, and then retransferring the workflow directory (and potentially the config directory too if the pipeline change involves new config parameters you would like to adjust).
-
-
