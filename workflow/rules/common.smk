@@ -987,3 +987,7 @@ def fetch_informative_read(wildcards):
 
     else:
         return expand("results/sf_reads/{sample}.s.bam", sample=wildcards.sample)
+
+
+##### SINGLE-CELL ALIGNMENT/ASSIGNMENT PARAMETERS #####
+
