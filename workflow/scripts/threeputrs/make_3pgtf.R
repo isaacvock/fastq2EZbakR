@@ -368,7 +368,7 @@ ThreePUTR_gr$annotated <- annotated
 ThreePUTR_gr_unfiltered <- ThreePUTR_gr
 
 if (only_annotated) {
-  ThreePUTR_gr <- ThreePUTR_gr[ThreePUTR_gr$annotated]
+  ThreePUTR_gr_filtered <- ThreePUTR_gr[ThreePUTR_gr$annotated]
 } else {
   ### only_annotated == FALSE: we may require CPA and/or internal-priming filter
   unannot_idx <- which(!ThreePUTR_gr$annotated)
@@ -429,11 +429,10 @@ if (only_annotated) {
   }
 }
 
-ThreePUTR_gr_filtered
 
 ### Export ---------------------------------------------------------------------
 
 rtracklayer::export(
-  ThreePUTR_gr,
+  ThreePUTR_gr_filtered,
   opt$output
 )
