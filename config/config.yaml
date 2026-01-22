@@ -182,7 +182,8 @@ read1_is_cdna: False
 
 # Path to file with one valid cell-barcode sequence per line
 # Tells STAR what cell barcodes you have (passed to STAR --soloCBwhitelist)
-barcode_whitelist: "path/to/whitelist.txt"
+# "-" means it auto-detects cell barcodes. (see manual for more details)
+barcode_whitelist: "None"
 
 # Type of single-cell RNA-seq
 # Passed to STAR --soloType
