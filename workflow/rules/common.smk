@@ -342,19 +342,16 @@ args = STAR_PARAMS.split()
 # MD = Used for mutation counting
 # nM = Number of mismatches
 
-if config["features"]["junctions"]:
-    tags = list(config["star_sam_tags"])
 
-    if "jI" not in tags:
-        tags = tags + ["jI"]
+tags = list(config["star_sam_tags"])
 
-    if "jM" not in tags:
-        tags = tags + ["jM"]
+if config.get("features").get("junctions", False):
+    tags = tags + ["jI", "jM"]
 
-    sam_attributes = set(tags)
+if config.get("features").get("sc", False):
+    tags = tags + ["CR", "UR", "CB", "UB"]
 
-else:
-    sam_attributes = set(config["star_sam_tags"])
+sam_attributes = set(tags)
 
 # Process --outSAMattributes
 if "--outSAMattributes" in args:
