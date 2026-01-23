@@ -581,6 +581,14 @@ def get_merge_input(wildcards):
             )
         )
 
+    if config.get("features").get("sc", False):
+        MERGE_INPUT.extend(
+            expand(
+                "results/read_to_cells/{SID}.csv",
+                SID=wildcards.sample,
+            )
+        )
+
     if config.get("features").get("eej", False):
         MERGE_INPUT.extend(
             expand(
