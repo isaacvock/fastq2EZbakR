@@ -39,7 +39,10 @@ option_list <- list(
   make_option(c("--starjunc", type = "logical"),
               default = "FALSE",
               help = "Whether reads were assigned to junctions via relevant STAR tags."), 
-    make_option(c("--threeputr", type = "logical"),
+  make_option(c("--sc", type = "logical"),
+              default = "FALSE",
+              help = "Whether reads were assigned to single-cell barcodes"), 
+  make_option(c("--threeputr", type = "logical"),
               default = "FALSE",
               help = "Whether reads were assigned to 3'-UTRs."),              
   make_option(c("-j", "--eej", type = "logical"),
@@ -215,7 +218,7 @@ if(opt$eij){
 
 if(opt$threeputr){
   
-  cat("Making 3'-UTR...")
+  cat("Making 3'-UTR table...")
   
   
   register_feat("threeputr", glue("./results/featurecounts_3utr/{opt$sample}.s.bam.featureCounts"), "threepUTR")
@@ -223,6 +226,25 @@ if(opt$threeputr){
   feature_vect <- c(feature_vect, "threepUTR")
   
 }
+
+
+if(opt$sc){
+  
+  cat("Making single-cell barcode table...")
+  
+  
+  dbExecute(con, glue("
+  CREATE OR REPLACE VIEW sc AS
+    SELECT qname,
+           cell_barcode
+    FROM read_csv_auto(
+      './results/read_to_cells/{opt$sample}.csv', header = TRUE);
+  "))
+  
+  feature_vect <- c(feature_vect, "cell_barcode")
+  
+}
+
 
 if(opt$starjunc){
   
@@ -275,6 +297,11 @@ feat_catalogue <- list(
     flag   = "threeputr",
     select = "COALESCE(tpu.threepUTR, '__no_feature') AS threepUTR",
     join   = "LEFT JOIN threeputr       tpu USING (qname)"
+  ),
+  sc = list(
+    flag   = "sc",
+    select = "COALESCE(sc.cell_barcode, '__no_feature') AS cell_barcode",
+    join   = "LEFT JOIN sc       sc USING (qname)"
   ),
   eej = list(
     flag   = "eej",                                

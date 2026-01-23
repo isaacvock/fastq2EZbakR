@@ -225,6 +225,7 @@ if not config.get("lowRAM", False):
             eej_included=config.get("features").get("eej", False),
             eij_included=config.get("features").get("eij", False),
             threeputr_included=config.get("features").get("threeputr", False),
+            sc_included=config.get("features").get("sc", False),
             starjunc_included=config.get("features").get("junctions", False),
             rscript=workflow.source_path(
                 "../scripts/bam2bakR/merge_features_and_muts.R"
@@ -246,7 +247,7 @@ if not config.get("lowRAM", False):
 
             {params.rscript} -g {params.genes_included} -e {params.exons_included} -b {params.exonbins_included} \
             -t {params.transcripts_included} --frombam {params.bamfiletranscripts_included} -o {output.output} -s {wildcards.sample} \
-            -j {params.eej_included} --threeputr {params.threeputr_included} --starjunc {params.starjunc_included} --eij {params.eij_included} \
+            -j {params.eej_included} --threeputr {params.threeputr_included} --sc {params.sc_included} --starjunc {params.starjunc_included} --eij {params.eij_included} \
             --annotation {params.annotation} -c {output.cBout} -m {params.muttypes} \
             --makecB {params.makecB} --makecUP {params.makecUP} --makeArrow {params.makeArrow} \
             --cUPout {output.cUPout} --Arrowout {output.Arrowout} --MaxMem {params.MaxMem} 1> {log} 2>&1
