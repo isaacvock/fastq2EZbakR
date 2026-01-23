@@ -187,7 +187,14 @@ def get_fastqc_read(wildcards):
 def get_fastq_r1(wildcards):
     if config["skip_trimming"]:
         if is_gz:
-            return expand("results/unzipped/{SID}.1.fastq", SID=wildcards.sample)
+
+            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
+
+                return expand("results/unzipped/{SID}.2.fastq", SID=wildcards.sample)
+
+            else:
+
+                return expand("results/unzipped/{SID}.1.fastq", SID=wildcards.sample)
 
         else:
             fastq_path = config["samples"][wildcards.sample]
@@ -197,10 +204,24 @@ def get_fastq_r1(wildcards):
                     + glob.glob(f"{fastq_path}/*.fq*")
                 )
             )
-            return fastq_files[0]
+
+            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True) and config.get("PE", True):
+
+                return fastq_files[1]
+
+            else:
+
+                return fastq_files[0]
 
     elif config["PE"]:
-        return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
+
+        if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
+            
+            return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
+
+        else:
+
+            return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
 
     else:
         return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
@@ -209,7 +230,14 @@ def get_fastq_r1(wildcards):
 def get_fastq_r2(wildcards):
     if config["skip_trimming"]:
         if is_gz:
-            return expand("results/unzipped/{SID}.2.fastq", SID=wildcards.sample)
+
+            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
+
+                return expand("results/unzipped/{SID}.1.fastq", SID=wildcards.sample)
+
+            else:
+
+                return expand("results/unzipped/{SID}.2.fastq", SID=wildcards.sample)
 
         else:
             fastq_path = config["samples"][wildcards.sample]
@@ -219,10 +247,24 @@ def get_fastq_r2(wildcards):
                     + glob.glob(f"{fastq_path}/*.fq*")
                 )
             )
-            return fastq_files[1]
+
+            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True) and config.get("PE", True):
+
+                return fastq_files[0]
+
+            else:
+
+                return fastq_files[1]
 
     elif config["PE"]:
-        return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
+
+        if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
+            
+            return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
+
+        else:
+
+            return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
 
     else:
         return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
