@@ -174,84 +174,6 @@ coverage_cutoff: 25
 bedtools_cluster_distance: 20
 
 
-### Parameters that are only relevant if features: sc == True
-
-# Is read 1 the cDNA that should be aligned to the genome? 
-# If False, read 2 is assumed to be the cDNA
-read1_is_cdna: False
-
-# Path to file with one valid cell-barcode sequence per line
-# Tells STAR what cell barcodes you have (passed to STAR --soloCBwhitelist)
-# "-" means it auto-detects cell barcodes. (see manual for more details)
-barcode_whitelist: "None"
-
-# Type of single-cell RNA-seq
-# Passed to STAR --soloType
-Type: "CB_UMI_Simple"
-
-
-# Cell barcode start base
-# Passed to STAR --soloCBstart
-CBstart: 1
-
-# Cell barcode length
-# Passed to STAR --soloCBlen
-CBlen: 16
-
-# UMI start base
-# Passed to STAR --soloUMIstart
-UMIstart: 17
-
-# UMI length
-# Passed to STAR --soloUMIlen
-UMIlen: 10
-
-# Which read mate contains the barcode (CB + UMI) sequence
-  # 0 = barcode sequence is on separate read
-  # 1 = barcode sequence is a part of mate 1
-  # 2 = barcode sequence is a part of mate 2
-BarcodeMate: 0
-
-# A string that describes position of cell barcode(s) on
-# the barcode read (format = startAnchor_startPosition_endAnchor_endPosition)
-# Only compatible with Type == "CB_UMI_Complex"
-# Passed to STAR --soloCBposition (see docs for more details)
-CBposition: "-"
-
-# A string that describes position of UMI on the barcode read
-# Same format and restrictions as CBposition
-# Passed to STAR --soloUMIposition (see docs for more details)
-UMIposition: "-"
-
-# Adapter sequence to anchor barcodes.
-# Passed to STAR --soloAdapterSequence
-AdapterSequence: "-"
-
-# Maximum number of mismatches allowed in adapter sequence
-AdapterMismatchesNmax: 1
-
-# How the cell barcodes should be matched to the WhiteList
-# Passed to STAR --soloCBmatchWLtype (see manual for options)
-CBmatchWLtype: "1MM_multi"
-
-# Genomic features for which UMI counts per cell barcode are collected
-# Passed to STAR --soloFeatures
-soloFeatures: "Gene" 
-
-# Counting method for reads mapping to multiple genes
-# Passed to STAR --soloMultiMappers
-MultiMappers: "Unique"
-
-# Type of UMI deduplication (collapsing) algorithm
-# Passed to STAR --soloUMIdedup
-UMIdedup: "1MM_All"
-
-# Type of UMI filtering (for reads uniquely mapping to genes)
-# Passed to STAR --soloUMIfiltering
-UMIfiltering: "-"
-
-
-
 ### Deeptools bamCoverge parameters
 deeptools_params: ""
 
@@ -333,6 +255,83 @@ make_tracks: True
   # Only relevant if aligner = 'star' and fastq files are
   # provided as input
 run_rsem: True
+
+
+### Parameters that are only relevant if features: sc == True
+
+# Is read 1 the cDNA that should be aligned to the genome? 
+# If False, read 2 is assumed to be the cDNA
+read1_is_cdna: False
+
+# Path to file with one valid cell-barcode sequence per line
+# Tells STAR what cell barcodes you have (passed to STAR --soloCBwhitelist)
+# "None" means it auto-detects cell barcodes. (see manual for more details)
+barcode_whitelist: "None"
+
+# Type of single-cell RNA-seq
+# Passed to STAR --soloType
+Type: "CB_UMI_Simple"
+
+
+# Cell barcode start base
+# Passed to STAR --soloCBstart
+CBstart: 1
+
+# Cell barcode length
+# Passed to STAR --soloCBlen
+CBlen: 16
+
+# UMI start base
+# Passed to STAR --soloUMIstart
+UMIstart: 17
+
+# UMI length
+# Passed to STAR --soloUMIlen
+UMIlen: 10
+
+# Which read mate contains the barcode (CB + UMI) sequence
+  # 0 = barcode sequence is on separate read
+  # 1 = barcode sequence is a part of mate 1
+  # 2 = barcode sequence is a part of mate 2
+BarcodeMate: 0
+
+# A string that describes position of cell barcode(s) on
+# the barcode read (format = startAnchor_startPosition_endAnchor_endPosition)
+# Only compatible with Type == "CB_UMI_Complex"
+# Passed to STAR --soloCBposition (see docs for more details)
+CBposition: "-"
+
+# A string that describes position of UMI on the barcode read
+# Same format and restrictions as CBposition
+# Passed to STAR --soloUMIposition (see docs for more details)
+UMIposition: "-"
+
+# Adapter sequence to anchor barcodes.
+# Passed to STAR --soloAdapterSequence
+AdapterSequence: "-"
+
+# Maximum number of mismatches allowed in adapter sequence
+AdapterMismatchesNmax: 1
+
+# How the cell barcodes should be matched to the WhiteList
+# Passed to STAR --soloCBmatchWLtype (see manual for options)
+CBmatchWLtype: "1MM_multi"
+
+# Genomic features for which UMI counts per cell barcode are collected
+# Passed to STAR --soloFeatures
+soloFeatures: "Gene" 
+
+# Counting method for reads mapping to multiple genes
+# Passed to STAR --soloMultiMappers
+MultiMappers: "Unique"
+
+# Type of UMI deduplication (collapsing) algorithm
+# Passed to STAR --soloUMIdedup
+UMIdedup: "1MM_All"
+
+# Type of UMI filtering (for reads uniquely mapping to genes)
+# Passed to STAR --soloUMIfiltering
+UMIfiltering: "-"
 
 
 

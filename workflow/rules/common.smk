@@ -991,3 +991,66 @@ def fetch_informative_read(wildcards):
 
 ##### SINGLE-CELL ALIGNMENT/ASSIGNMENT PARAMETERS #####
 
+def _as_str(v):
+    return "" if v is None else str(v)
+
+def _sc_star_opts(cfg):
+    """
+    Build STARsolo options from config.
+    """
+    opts = []
+
+    # --soloType
+    solo_type = cfg.get("Type", "CB_UMI_Simple")
+    opts += ["--soloType", _as_str(solo_type)]
+
+    # Always set whitelist unless user explicitly uses "-" to mean "omit flag"
+    wl = str(cfg.get("barcode_whitelist", "None"))
+    if wl != "-":
+        # wl may be "None" (special STAR value) or a filename/preset
+        opts += ["--soloCBwhitelist", wl]
+
+    # Simple mode: CB/UMI start/len + which mate
+    # (STAR expects integers; we stringify)
+    for key, flag in [
+        ("CBstart", "--soloCBstart"),
+        ("CBlen", "--soloCBlen"),
+        ("UMIstart", "--soloUMIstart"),
+        ("UMIlen", "--soloUMIlen"),
+        ("BarcodeMate", "--soloBarcodeMate"),
+    ]:
+        if key in cfg and cfg[key] is not None:
+            opts += [flag, _as_str(cfg[key])]
+
+    # Complex mode positions/adapters (only if provided and not "-")
+    for key, flag in [
+        ("CBposition", "--soloCBposition"),
+        ("UMIposition", "--soloUMIposition"),
+        ("AdapterSequence", "--soloAdapterSequence"),
+        ("AdapterMismatchesNmax", "--soloAdapterMismatchesNmax"),
+    ]:
+        v = cfg.get(key, "-")
+        if v is not None and str(v) != "-":
+            opts += [flag, _as_str(v)]
+
+    # Other STARsolo knobs
+    for key, flag in [
+        ("CBmatchWLtype", "--soloCBmatchWLtype"),
+        ("soloFeatures", "--soloFeatures"),
+        ("MultiMappers", "--soloMultiMappers"),
+        ("UMIdedup", "--soloUMIdedup"),
+        ("UMIfiltering", "--soloUMIfiltering"),
+    ]:
+        v = cfg.get(key, "-")
+        if v is not None and str(v) != "-":
+            opts += [flag, _as_str(v)]
+
+    return opts
+
+
+# Only add SOLO settings if doing single-cell assignment
+if config.get("features", {}).get("sc", False):
+    sc_opts = _sc_star_opts(config)
+
+    # Append to existing STAR_EXTRA robustly
+    STAR_EXTRA = " ".join([s for s in [STAR_EXTRA, " ".join(sc_opts)] if s.strip()])
