@@ -240,3 +240,32 @@ rule featurecounts_3utr:
         "logs/featurecounts_3utr/{sample}.log",
     wrapper:
         "v7.2.0/bio/subread/featurecounts"
+
+
+# Assign reads to single-cell barcode
+rule read_to_cells:
+    input:
+        samples="results/sf_reads/{sample}.s.bam",
+    output:
+        table=temp("results/read_to_cells/{sample}.csv"),
+    log:
+        "logs/read_to_cells/{sample}.log",
+    conda:
+        "../envs/full.yaml"
+    threads: 8
+    shell:
+        r"""
+        set -euo pipefail
+
+        (
+          echo "qname,cell_barcode"
+          # BAM is already filtered upstream; only keep read1 to avoid duplicates
+          samtools view -@ {threads} -f 0x40 {input.samples} \
+          | awk -F'\t' '{{
+              cb="";
+              for(i=12;i<=NF;i++){{ if($i ~ /^CB:Z:/){{ cb=substr($i,6); break }} }}
+              if(cb==""){{ for(i=12;i<=NF;i++){{ if($i ~ /^CR:Z:/){{ cb=substr($i,6); break }} }} }}
+              if(cb!="") print $1","cb
+          }}'
+        ) > {output.table} 2> {log}
+        """

@@ -613,7 +613,9 @@ else:
 
 ## Get extra parameters for gene calling
 
-if config["PE"]:
+# NOTE: might need to be more careful to handle general case of when both reads could contain sequence information
+# Basically just optimized for scNT-seq at this point
+if config["PE"] and not config.get("features").get("sc", False):
     FC_GENES_PARAMS = " -R CORE -g gene_id -t transcript -p --countReadPairs"
 
 else:
@@ -622,7 +624,7 @@ else:
 
 ## Get extra parameters for exon calling
 
-if config["PE"]:
+if config["PE"] and not config.get("features").get("sc", False):
     FC_EXONS_PARAMS = " -R CORE -g gene_id -J -p --countReadPairs"
 
 else:
@@ -631,7 +633,7 @@ else:
 
 ## Get extra parameters for transcript calling
 
-if config["PE"]:
+if config["PE"] and not config.get("features").get("sc", False):
     FC_TRANSCRIPTS_PARAMS = " -R CORE -g transcript_id -t exon -O -p --countReadPairs"
 
 else:
@@ -641,7 +643,7 @@ else:
 ## Get extra parameters for exon bin calling
 
 
-if config["PE"]:
+if config["PE"] and not config.get("features").get("sc", False):
     FC_EXONBINS_PARAMS = " -R CORE -f -g exon_id -t exonic_part -O -p --countReadPairs"
 
 else:
@@ -650,7 +652,7 @@ else:
 
 ## Get extra parameters for exon-exon junction calling
 
-if config["PE"]:
+if config["PE"] and not config.get("features").get("sc", False):
     FC_EEJ_PARAMS = (
         " -R CORE -g junction_id -t eej -O -p --countReadPairs --fracOverlapFeature 0.9"
     )
@@ -661,7 +663,7 @@ else:
 
 ## Get extra parameters for exon-intron junction calling
 
-if config["PE"]:
+if config["PE"] and not config.get("features").get("sc", False):
     FC_EIJ_PARAMS = " -R CORE -g junction_id -t eij -O -p --countReadPairs"
 
 else:
