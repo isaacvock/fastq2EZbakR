@@ -40,7 +40,7 @@ rule RSEM:
         bam="results/rsem/{sample}.transcript.bam",
     params:
         # optional, specify if sequencing is paired-end
-        paired_end=config["PE"],
+        paired_end=BAM2BAKR_FORMAT,
         # additional optional parameters to pass to rsem, for example,
         extra=config["rsem_quant_params"],
     log:

@@ -1008,7 +1008,7 @@ if config.get("aligner") == "star":
 
 ##### 3'-UTR FEATURECOUNTS PARAMETER #####
 
-if config["PE"]:
+if config.get("PE"):
     if config.get("strandedness") == "reverse":
         FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 5 -g utr_id"
     else:
@@ -1103,3 +1103,12 @@ if config.get("features", {}).get("sc", False):
 
     # Append to existing STAR_EXTRA robustly
     STAR_EXTRA = " ".join([s for s in [STAR_EXTRA, " ".join(sc_opts)] if s.strip()])
+
+
+if config.get("sc", False):
+
+    BAM2BAKR_FORMAT = "SE"
+
+else:
+
+    BAM2BAKR_FORMAT = "PE" if config.get("PE") else "SE"

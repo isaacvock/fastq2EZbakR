@@ -176,7 +176,7 @@ rule cnt_muts:
         "results/sf_reads/{sample}.s.bam",
         "results/snps/snp.txt",
     params:
-        format=FORMAT,
+        format=BAM2BAKR_FORMAT,
         minqual=config["minqual"],
         mut_tracks=config["mut_tracks"],
         strand=STRAND,
