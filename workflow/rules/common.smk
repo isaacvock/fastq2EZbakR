@@ -1105,7 +1105,7 @@ if config.get("features", {}).get("sc", False):
     STAR_EXTRA = " ".join([s for s in [STAR_EXTRA, " ".join(sc_opts)] if s.strip()])
 
 
-if config.get("sc", False):
+if config.get("features", {}).get("sc", False):
 
     BAM2BAKR_FORMAT = "SE"
 
