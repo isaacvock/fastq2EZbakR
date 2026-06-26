@@ -10,6 +10,7 @@ min_version("6.4.1")
 
 configfile: "config/config.yaml"
 
+container: "docker://docker.io/isaacvock/snakeverse-base:0.1.0"
 
 ##### Impute potentially missing config parameters for backwards compatibiltiy #####
 
