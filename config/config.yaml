@@ -132,7 +132,7 @@ features:
 # If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
 # I call_threeputrs == False, then your provided GTF (path specified in `annotation`)
   # must contain values of `3UTR` in a field (column) called "type".
-call_threeputrs: True
+call_threeputrs: False
 
 # Only relevant if call_threeputrs == True
 # If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
@@ -228,8 +228,8 @@ skip_trimming: False
 flat_annotation: "data/annotation/flat.gtf"
 
 
-# Minimum base quality required to call mutation
-minqual: 40
+# Minimum base quality required to call a mutation
+minqual: 10
 
 
 # Are you using the Windows subsystem for Linux?
