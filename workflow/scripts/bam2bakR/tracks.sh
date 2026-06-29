@@ -23,7 +23,14 @@ genome_fasta=$7
 WSL_b=$8
 normalize=$9
 pyscript=${10}
-output=${11}
+strand=${11}
+output=${12}
+
+if [ "$strand" = "R" ]; then
+    star_strands=(str2 str1)
+else
+    star_strands=(str1 str2)
+fi
 
 
     # Create ./results/tracks/
@@ -134,7 +141,7 @@ echo '* Making .chrom.sizes file'
                                         >> ./results/tracks/${sample}.{1}.{2}.{5}.bedGraph" ::: $muts \
                                                                            ::: $(seq 0 5) \
                                                                            ::: + - \
-                                                                           :::+ str1 str2 \
+                                                                           :::+ "${star_strands[@]}" \
                                                                            :::+ pos min
 
         rm ./results/tracks/"$sample"*.bg
@@ -159,7 +166,7 @@ echo '* Making .chrom.sizes file'
                                         >> ./results/tracks/${sample}.{1}.{2}.{5}.bedGraph" ::: $muts \
                                                                            ::: $(seq 0 5) \
                                                                            ::: + - \
-                                                                           :::+ str1 str2 \
+                                                                           :::+ "${star_strands[@]}" \
                                                                            :::+ pos min
 
         rm ./results/tracks/"$sample"*.bg
