@@ -229,7 +229,7 @@ flat_annotation: "data/annotation/flat.gtf"
 
 
 # Minimum base quality required to call a mutation
-minqual: 10
+minqual: 40
 
 
 # Are you using the Windows subsystem for Linux?

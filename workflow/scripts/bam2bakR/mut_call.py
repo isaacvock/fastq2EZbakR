@@ -201,7 +201,7 @@ for r in samfile:
 
             # cU.rds trial data
             if args.mutPos:
-                if (b[0].upper() in args.base):
+                if (b[0].upper() in args.base) and (b[2] > args.minQual):
                     whichMut = [mut for mut in args.mutType if mut[0] == b[0].upper()]     # Find out which mutation types use this reference base e.g. T -> TC, TG, TA, TN
                     for mt in whichMut:
                         key = r.reference_name + ':' + str(pos) + ':' + mt
