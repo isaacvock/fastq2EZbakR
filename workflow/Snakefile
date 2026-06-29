@@ -10,6 +10,7 @@ min_version("6.4.1")
 
 configfile: "config/config.yaml"
 
+container: "docker://docker.io/isaacvock/snakeverse-base:0.1.0"
 
 ##### Impute potentially missing config parameters for backwards compatibiltiy #####
 
@@ -62,9 +63,9 @@ report: "report/workflow.rst"
 ##### setup singularity #####
 
 
-# this container defines the underlying OS for each job when using the workflow
-# with --use-conda --use-singularity
-container: "docker://continuumio/miniconda3"
+# # this container defines the underlying OS for each job when using the workflow
+# # with --use-conda --use-singularity
+# container: "docker://continuumio/miniconda3"
 
 
 ##### load rules #####
