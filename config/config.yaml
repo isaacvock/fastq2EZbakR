@@ -230,9 +230,9 @@ flat_annotation: "data/annotation/flat.gtf"
 
 # Minimum base quality required to call a mutation
 # NOTE: due to a legacy ASCII parsing quirk, the actual Phred score
-# minimum is `minqual` - 33. So if you set `minqual: 63`, the minimum
-# Phred score allowed for counting a base call as a mutation is 31 (`minqual` is a non-inclusive minimum). 
-minqual: 63
+# minimum is `minqual` - 33. So if you set `minqual: 62`, the minimum
+# Phred score allowed for counting a base call as a mutation is 30 (`minqual` is a non-inclusive minimum). 
+minqual: 62
 
 
 # Are you using the Windows subsystem for Linux?
