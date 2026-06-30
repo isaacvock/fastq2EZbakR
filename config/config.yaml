@@ -132,7 +132,7 @@ features:
 # If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
 # I call_threeputrs == False, then your provided GTF (path specified in `annotation`)
   # must contain values of `3UTR` in a field (column) called "type".
-call_threeputrs: True
+call_threeputrs: False
 
 # Only relevant if call_threeputrs == True
 # If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
@@ -228,8 +228,11 @@ skip_trimming: False
 flat_annotation: "data/annotation/flat.gtf"
 
 
-# Minimum base quality required to call mutation
-minqual: 40
+# Minimum base quality required to call a mutation
+# NOTE: due to a legacy ASCII parsing quirk, the actual Phred score
+# minimum is `minqual` - 33. So if you set `minqual: 62`, the minimum
+# Phred score allowed for counting a base call as a mutation is 30 (`minqual` is a non-inclusive minimum). 
+minqual: 62
 
 
 # Are you using the Windows subsystem for Linux?

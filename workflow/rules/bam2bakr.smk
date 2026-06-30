@@ -366,6 +366,7 @@ rule maketdf:
         genome=config["genome"],
         WSL=config["WSL"],
         normalize=config["normalize"],
+        strand=STRAND,
     log:
         "logs/maketdf/{sample}.log",
     threads: 10
@@ -375,5 +376,5 @@ rule maketdf:
         """
         chmod +x {params.shellscript}
         chmod +x {params.pythonscript}
-        {params.shellscript} {threads} {wildcards.sample} {input} {params.mut_tracks} {params.genome} {params.WSL} {params.normalize} {params.pythonscript} {output} 1> {log} 2>&1
+        {params.shellscript} {threads} {wildcards.sample} {input} {params.mut_tracks} {params.genome} {params.WSL} {params.normalize} {params.pythonscript} {params.strand} {output} 1> {log} 2>&1
         """
