@@ -163,7 +163,7 @@ for r in samfile:
                 MD = {z[0][0]: [z[0][1], z[1], z[2], z[0][2]] for z in zip(MD, r.query_alignment_sequence, r.query_alignment_qualities)}
 
                 # MDstore.update({ pos:data for pos, data in MD.items() if pos in dovetail and MDstore[pos][2] < data[2] })   # Replace dovetail positions if better quality
-                MDstore.update({ pos:data for pos, data in MD.items() if pos in dovetail and ((MDstore[pos][2] < data[2] and MDstore[pos][0].islower() and data[0].islower()) or (MDstore[pos][2] < data[2] and MDstore[pos][0].isupper() and data[0].isupper()) or (MDstore[pos][2] < data[2] and MDstore[pos][0].islower() and data[0].isupper() and MDstore[pos][2] < args.minQual) or (data[0].islower() and MDstore[pos][0].isupper() and data[2] > args.minQual)) })
+                MDstore.update({ pos:data for pos, data in MD.items() if pos in dovetail and ((MDstore[pos][2] < data[2] and MDstore[pos][0].islower() and data[0].islower()) or (MDstore[pos][2] < data[2] and MDstore[pos][0].isupper() and data[0].isupper()) or (MDstore[pos][2] < data[2] and MDstore[pos][0].islower() and data[0].isupper() and MDstore[pos][2] + 33 < args.minQual) or (data[0].islower() and MDstore[pos][0].isupper() and data[2] + 33 > args.minQual)) })
                 # This is a hack to simulate TimeLapse.R behaviour, but does not necessarily mean that it is a correct dovetail mutations handling
                 # For dovetail bases: 1) If there is no mutation in 1st and in 2nd read => replace with higher quality 2nd read
                 #                     2) If there is mutation in 1st and in 2nd read => replace with higher quality 2nd read
@@ -177,7 +177,7 @@ for r in samfile:
 
     # Collect data: Second read only or if in SE mode
     if (args.reads == 'SE' or firstReadName == r.query_name) and len(MDstore) > 0:
-        refseq = [x[0].upper() for x in MDstore.values() if x[2] > args.minQual]  # Get reference sequence for readpair keeping only bases with given qaulity (Note: I think this should be also filtered for closeness to read end and presence of SNPs)
+        refseq = [x[0].upper() for x in MDstore.values() if x[2] + 33 > args.minQual]  # Get reference sequence for readpair keeping only bases with given qaulity (Note: I think this should be also filtered for closeness to read end and presence of SNPs)
         # Count bases in reference sequence (soft clipped, dovetail-free)
         r_info[1] = refseq.count('A')       # nA
         r_info[2] = refseq.count('C')       # nC
