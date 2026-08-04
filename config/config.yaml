@@ -71,6 +71,15 @@ annotation: data/annotation/genome.gtf
     # 2) hisat2
 aligner: "star"
 
+# Modify output .bam to remove read sets? (e.g. mito reads, PolIII, etc)
+  # Options are:
+    # 1) yes
+    # 2) no
+modify_bam: "no"
+
+# Only relevant if modify_bam is "yes"
+# Reads overlapping intervals in this BED file are dropped from the output BAM
+path_to_removal_bed: data/annotation/removal.bed
 
 # Path to directory containing indices
   # Indices will be built automatically if not present
