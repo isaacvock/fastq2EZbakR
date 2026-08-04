@@ -9,6 +9,9 @@ config["bam2bakr"] = all(value.endswith(".bam") for value in config["samples"].v
 if config["features"]["junctions"]:
     config["remove_tags"] = False
 
+### Safety measure, that if modify_bam is not in the config.yaml (e.g. in old config files before this change), that it is set to no as a standard.
+if “modify_bam” not in config:
+    config[“modify_bam”] = “no”
 
 ### GENERAL HELPER FUNCTIONS/VARIABLES USED IN ALL CASES
 
