@@ -55,7 +55,7 @@ if config["aligner"] == "star":
                 fq2=get_fastq_r2,
                 index=config["indices"],
             output:
-                aln="results/align/{sample}.bam",
+                aln="results/alfullbam/{sample}.bam",
                 sj="results/align/{sample}-SJ.out.tab",
                 log="results/align/{sample}-Log.out",
                 log_progress="results/align/{sample}-Log.progress.out",
@@ -84,7 +84,7 @@ if config["aligner"] == "star":
                 fq1=get_fastq_r1,
                 index=config["indices"],
             output:
-                aln="results/align/{sample}.bam",
+                aln="results/alfullbam/{sample}.bam",
                 sj="results/align/{sample}-SJ.out.tab",
                 log="results/align/{sample}-Log.out",
                 log_progress="results/align/{sample}-Log.progress.out",
@@ -105,6 +105,40 @@ if config["aligner"] == "star":
             threads: 24
             script:
                 "../scripts/alignment/star-align.py"
+
+
+######################################################################################
+##### REMOVE READ SETS FROM MAIN .bam OUTPUT
+######################################################################################
+
+
+if config.get("modify_bam", "no") == "no":
+
+    rule rename_file:
+        input:
+            "results/alfullbam/{sample}.bam",
+        output:
+            "results/align/{sample}.bam",
+        shell:
+            "mv {input} {output}"
+
+
+if config.get("modify_bam", "no") == "yes":
+
+    rule modify_bam:
+        input:
+            bam="results/alfullbam/{sample}.bam",
+            bed=config["path_to_removal_bed"],
+        output:
+            bam="results/align/{sample}.bam",
+        log:
+            "logs/align/{sample}_modifybam.log",
+        conda:
+            "../envs/full.yaml"
+        shell:
+            """
+            samtools view -h -L {input.bed} -U {output.bam} {input.bam} > /dev/null 2> {log}
+            """
 
 
 ######################################################################################
@@ -192,7 +226,7 @@ if config["aligner"] == "hisat2":
             reads=get_hisat2_reads,
             idx=config["indices"],
         output:
-            "results/align/{sample}.bam",
+            "results/alfullbam/{sample}.bam",
         log:
             "logs/align/{sample}_hisat2.log",
         params:
