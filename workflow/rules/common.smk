@@ -679,6 +679,10 @@ def get_other_output():
             )
         )
 
+    # 3' UTR stuff
+    if config.get("features").get("threeputr", False):
+        target.append(THREEPUTR_ANNOTATION)
+
     # fastQC output
     if not config["bam2bakr"]:
         target.append("results/multiqc/multiqc_report.html")
@@ -690,10 +694,6 @@ def get_other_output():
         target.append("results/cB/mutpos.csv.gz")
 
         target.append("results/cB/mutpos_filtered.csv.gz")
-
-    # if config["use_salmon"]:
-
-    #     target.append(expand("reul"))
 
     return target
 
@@ -975,7 +975,7 @@ if config.get("call_threeputrs", False):
     THREEPUTR_ANNOTATION = "annotations/threepUTR_annotation.gtf"
 
 else:
-    THREEPUTR_ANNOTATION = config.get("annotation")
+    THREEPUTR_ANNOTATION = "annotations/annotated_threepUTR_annotation.gtf"
 
 
 # Function to get the informative read for 3'-end calling

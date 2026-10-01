@@ -87,6 +87,10 @@ jobs:
 
   run-workflow-3p:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        call_threeputrs: ["True", "False"]
     needs:
       - linting
       - formatting
@@ -94,9 +98,35 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-    - name: Test workflow (3pUTR)
+    - name: Check DAG (3pUTR disabled)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/threeputr_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
+        args: "--configfile .test/configs/transcript_config.yaml --dry-run --cores 2"
+    - name: Check DAG (3pUTR calling ${{ matrix.call_threeputrs }})
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: workflow/Snakefile
+        args: "--configfile .test/configs/threeputr_config.yaml --config call_threeputrs=${{ matrix.call_threeputrs }} --dry-run --cores 2"
+    - name: Test annotation helper
+      if: matrix.call_threeputrs == 'False'
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/threeputr_tests.smk
+        args: "test_annotate_threepUTR_gtf --use-conda --show-failed-logs --cores 1"
+    - name: Test workflow (3pUTR calling ${{ matrix.call_threeputrs }})
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: workflow/Snakefile
+        args: "--configfile .test/configs/threeputr_config.yaml --config call_threeputrs=${{ matrix.call_threeputrs }} --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30 --notemp"
+    - name: Check annotation-only assignments and cB
+      if: matrix.call_threeputrs == 'False'
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/threeputr_tests.smk
+        args: "check_threeputr_output --use-conda --show-failed-logs --cores 1"

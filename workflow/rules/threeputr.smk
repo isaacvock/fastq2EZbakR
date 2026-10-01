@@ -1,6 +1,25 @@
 """
-Rules to build a custom 3'UTR annotation from 3'-end data
+Rules to build a 3'UTR annotation from a GTF or 3'-end data
 """
+
+
+### Annotate terminal exons when de novo 3'-end calling is disabled
+rule annotate_threepUTR_gtf:
+    input:
+        gtf=config["annotation"],
+    output:
+        "annotations/annotated_threepUTR_annotation.gtf",
+    log:
+        "logs/annotate_threepUTR_gtf/annotate_threepUTR_gtf.log",
+    conda:
+        "../envs/Rbio.yaml"
+    params:
+        rscript=workflow.source_path("../scripts/threeputrs/annotate_3pgtf.R"),
+    threads: 1
+    shell:
+        """
+        Rscript {params.rscript:q} --gtf {input.gtf:q} --output {output:q} 1> {log:q} 2>&1
+        """
 
 
 ### For paired-end experiments, keep only the read that "matters"
