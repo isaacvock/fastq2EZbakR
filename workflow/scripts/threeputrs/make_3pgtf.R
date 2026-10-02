@@ -42,7 +42,7 @@ get_seq_windows <- function(genome, chr, start, end) {
 
 
 
-### CPA motif (AAUAAA) check near cleavage site
+### CPA motifs (AAUAAA / AUUAAA) check near cleavage site
 has_cpa_motif <- function(gr, genome, chr_lengths,
                           upstream = 50L,
                           downstream = 10L) {
@@ -64,7 +64,9 @@ has_cpa_motif <- function(gr, genome, chr_lengths,
     end_win   <- pmin(chr_len, site + downstream)
     
     seqs <- get_seq_windows(genome, chr, start_win, end_win)
-    res[plus_idx] <- Biostrings::vcountPattern("AATAAA", seqs, fixed = TRUE) > 0L
+    res[plus_idx] <-
+      Biostrings::vcountPattern("AATAAA", seqs, fixed = TRUE) > 0L |
+      Biostrings::vcountPattern("ATTAAA", seqs, fixed = TRUE) > 0L
   }
   
   ## - strand: cleavage at start; search around that, then reverse complement
@@ -79,7 +81,9 @@ has_cpa_motif <- function(gr, genome, chr_lengths,
     
     seqs <- get_seq_windows(genome, chr, start_win, end_win)
     seqs_rc <- Biostrings::reverseComplement(seqs)
-    res[minus_idx] <- Biostrings::vcountPattern("AATAAA", seqs_rc, fixed = TRUE) > 0L
+    res[minus_idx] <-
+      Biostrings::vcountPattern("AATAAA", seqs_rc, fixed = TRUE) > 0L |
+      Biostrings::vcountPattern("ATTAAA", seqs_rc, fixed = TRUE) > 0L
   }
   
   res
@@ -89,7 +93,6 @@ has_cpa_motif <- function(gr, genome, chr_lengths,
 ### Internal priming / false polyA filter
 is_near_false_polyA <- function(gr, genome, chr_lengths,
                                 tract_len = 7L,
-                                flank_up  = 5L,
                                 flank_down = 25L) {
   n <- length(gr)
   if (n == 0L) return(logical(0))
@@ -107,18 +110,41 @@ is_near_false_polyA <- function(gr, genome, chr_lengths,
   chr     <- seqnames_char
   chr_len <- chr_lengths[chr]
   
-  start_win <- pmax(1L, cleavage - flank_up)
-  end_win   <- pmin(chr_len, cleavage + flank_down)
-  
-  seqs <- get_seq_windows(genome, chr, start_win, end_win)
-  
+  if (anyNA(chr_len)) {
+    stop("Some seqnames in peaks not found in genome FASTA: ",
+         paste(unique(chr[is.na(chr_len)]), collapse = ", "))
+  }
+
+  # Strictly downstream in transcript orientation; the cleavage base is excluded.
+  start_win <- pmax(1L, ifelse(strand_char == "+",
+                              cleavage + 1L, cleavage - flank_down))
+  end_win <- pmin(chr_len, ifelse(strand_char == "+",
+                                 cleavage + flank_down, cleavage - 1L))
+  valid <- which(start_win <= end_win)
+  res <- logical(n)
+  if (length(valid) == 0L) return(res)
+
+  seqs <- get_seq_windows(genome, chr[valid], start_win[valid], end_win[valid])
+  minus_idx <- which(strand_char[valid] == "-")
+  if (length(minus_idx) > 0L) {
+    seqs[minus_idx] <- Biostrings::reverseComplement(seqs[minus_idx])
+  }
+
   polyA_pat <- Biostrings::DNAString(paste(rep("A", tract_len), collapse = ""))
-  polyT_pat <- Biostrings::DNAString(paste(rep("T", tract_len), collapse = ""))
-  
-  hitsA <- Biostrings::vcountPattern(polyA_pat, seqs, fixed = TRUE)
-  hitsT <- Biostrings::vcountPattern(polyT_pat, seqs, fixed = TRUE)
-  
-  (hitsA > 0L) | (hitsT > 0L)
+  hitsA <- Biostrings::vcountPattern(polyA_pat, seqs, fixed = TRUE) > 0L
+
+  # A-richness also catches interrupted tracts: >=7 As in the first 10 bases.
+  # Short chromosome-edge windows do not qualify for this density criterion.
+  rich <- logical(length(seqs))
+  full_window <- which(width(seqs) >= 10L)
+  if (length(full_window) > 0L) {
+    rich[full_window] <- Biostrings::vcountPattern(
+      "A", Biostrings::subseq(seqs[full_window], start = 1L, end = 10L),
+      fixed = TRUE
+    ) >= 7L
+  }
+  res[valid] <- hitsA | rich
+  res
 }
 
 
@@ -137,7 +163,7 @@ option_list <- list(
               help = "Path to input GTF file for gene annotation"),
   make_option(c("--fasta"),
               type = "character",
-              help = "Path to input FASTA file for genome sequence information"),
+              help = "Genome FASTA required for enabled internal-priming flags or CPA checks"),
   make_option(c("--output"),
               type = "character",
               help = "Path to output GTF file created by script"),
@@ -156,11 +182,13 @@ option_list <- list(
   make_option(c("--false_polyA_len"),
               type = "numeric",
               default = 7,
-              help = "Filter out unannotated 3'-UTRs near a polyA/polyT stretch of this length or longer"),
+              help = paste("Flag downstream A runs of this length within 25 bases or >=7 As",
+                           "in the first 10 transcript-oriented bases; filter only unannotated",
+                           "sites. <=0 disables both criteria.")),
   make_option(c("--require_CPA"),
               type = "logical",
               default = FALSE,
-              help = "Whether to require CPA consensus sequence (AAUAAA) near unannotated 3'-UTRs"),
+              help = "Whether to require AATAAA or ATTAAA near unannotated 3'-UTRs"),
   make_option(c("--only_annotated"),
               type = "logical",
               default = FALSE,
@@ -226,10 +254,11 @@ genes <- GenomicRanges::GRanges(
 
 ### GRanges for 3'-end peaks ---------------------------------------------------
 
+# BED uses zero-based starts; GRanges and GTF use one-based closed intervals.
 gr_plus <- GenomicRanges::GRanges(
   seqnames = Rle(bed_plus$seqname),
   ranges = IRanges(
-    start = bed_plus$start,
+    start = bed_plus$start + 1L,
     end   = bed_plus$end
   ),
   strand   = "+",
@@ -239,7 +268,7 @@ gr_plus <- GenomicRanges::GRanges(
 gr_minus <- GenomicRanges::GRanges(
   seqnames = Rle(bed_minus$seqname),
   ranges = IRanges(
-    start = bed_minus$start,
+    start = bed_minus$start + 1L,
     end   = bed_minus$end
   ),
   strand   = "-",
@@ -334,7 +363,7 @@ last_exon_df <- gtf %>%
   ) %>%
   dplyr::filter(
     (strand == "+" & end == max(end)) |
-      (strand == "-" & end == min(start))
+      (strand == "-" & start == min(start))
   )
 
 last_exons <- GenomicRanges::GRanges(
@@ -363,76 +392,61 @@ if (any(same_gene)) {
 
 ThreePUTR_gr$annotated <- annotated
 
-### NEW: if only_annotated, keep only peaks in last exons ----------------------
+### Assess sequence evidence, including priming flags in terminal exons --------
 
-ThreePUTR_gr_unfiltered <- ThreePUTR_gr
+unannot_idx <- which(!ThreePUTR_gr$annotated)
+check_priming <- false_polyA_len > 0L && length(ThreePUTR_gr) > 0L
+check_CPA <- !only_annotated && require_CPA && length(unannot_idx) > 0L
 
+# NA means not assessed, rather than evidence that a site passed a sequence check.
+ThreePUTR_gr$has_CPA <- rep(NA, length(ThreePUTR_gr))
+ThreePUTR_gr$false_polyA <- rep(NA, length(ThreePUTR_gr))
+
+if (check_priming || check_CPA) {
+  if (is.null(opt$fasta) || !file.exists(opt$fasta)) {
+    stop("A FASTA file must be provided via --fasta for internal-priming flags ",
+         "(including annotated sites) or enabled CPA checks.")
+  }
+
+  genome <- Biostrings::readDNAStringSet(opt$fasta)
+  names(genome) <- sapply(str_split(names(genome), pattern = " "),
+                          function(x) x[1])
+  chr_lengths <- setNames(as.integer(width(genome)), names(genome))
+
+  if (check_priming) {
+    ThreePUTR_gr$false_polyA <- is_near_false_polyA(
+      ThreePUTR_gr, genome, chr_lengths, tract_len = false_polyA_len
+    )
+  }
+  if (check_CPA) {
+    ThreePUTR_gr$has_CPA[unannot_idx] <- has_cpa_motif(
+      ThreePUTR_gr[unannot_idx], genome, chr_lengths
+    )
+  }
+}
+
+### Filter candidates; annotated sites retain their sequence flags -------------
+
+ThreePUTR_gr_filtered <- ThreePUTR_gr
 if (only_annotated) {
   ThreePUTR_gr_filtered <- ThreePUTR_gr[ThreePUTR_gr$annotated]
 } else {
-  ### only_annotated == FALSE: we may require CPA and/or internal-priming filter
-  unannot_idx <- which(!ThreePUTR_gr$annotated)
-  
-  if (length(unannot_idx) > 0L &&
-      (require_CPA || false_polyA_len > 0L)) {
-    
-    if (is.null(opt$fasta) || !file.exists(opt$fasta)) {
-      stop("A FASTA file must be provided via --fasta when only_annotated is FALSE and CPA / polyA filters are enabled.")
-    }
-    
-    genome <- Biostrings::readDNAStringSet(opt$fasta)
-    
-    # Deal with overly complicated FASTA sequence names that appear sometimes
-    names(genome) <- sapply(str_split(names(genome), pattern = " "),
-                            function(x) x[1])
-    
-    chr_lengths <- setNames(as.integer(width(genome)), names(genome))
-    
-    # initialize cols
-    ThreePUTR_gr$has_CPA     <- TRUE
-    ThreePUTR_gr$false_polyA <- FALSE
-    
-    # 1) CPA requirement for unannotated peaks
-    if (require_CPA) {
-      has_cpa <- has_cpa_motif(
-        ThreePUTR_gr[unannot_idx],
-        genome,
-        chr_lengths,
-        upstream   = 50L,
-        downstream = 10L
-      )
-      ThreePUTR_gr$has_CPA[unannot_idx] <- has_cpa
-    }
-    
-    # 2) internal priming / false polyA filter for unannotated peaks
-    if (false_polyA_len > 0L) {
-      near_polyA <- is_near_false_polyA(
-        ThreePUTR_gr[unannot_idx],
-        genome,
-        chr_lengths,
-        tract_len  = false_polyA_len,
-        flank_up   = 5L,
-        flank_down = 25L
-      )
-      ThreePUTR_gr$false_polyA[unannot_idx] <- near_polyA
-    }
-    
-    # Filter
-    ThreePUTR_gr_filtered <- ThreePUTR_gr[
-      ThreePUTR_gr$annotated | # Annotated
-        (
-          (ThreePUTR_gr$has_CPA | !require_CPA) & # Has CPA or user doesn't require it
-            (!ThreePUTR_gr$false_polyA | false_polyA_len <= 0) # Not close to a polyA seq or user doesn't care
-        )
-    ]
-    
-  }
+  cpa_ok <- !require_CPA | ThreePUTR_gr$has_CPA
+  priming_ok <- false_polyA_len <= 0L | !ThreePUTR_gr$false_polyA
+  ThreePUTR_gr_filtered <- ThreePUTR_gr[
+    ThreePUTR_gr$annotated | (cpa_ok & priming_ok)
+  ]
 }
 
 
 ### Export ---------------------------------------------------------------------
 
-rtracklayer::export(
-  ThreePUTR_gr_filtered,
-  opt$output
-)
+# rtracklayer's GTF exporter cannot serialize zero-row metadata reliably.
+if (length(ThreePUTR_gr_filtered) == 0L) {
+  writeLines(character(), opt$output)
+} else {
+  rtracklayer::export(
+    ThreePUTR_gr_filtered,
+    opt$output
+  )
+}

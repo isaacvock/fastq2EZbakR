@@ -7,13 +7,30 @@ rule test_annotate_threepUTR_gtf:
         "logs/threeputr_tests/annotation.log",
     conda:
         "../workflow/envs/Rbio.yaml"
+    threads: 1
     params:
         rscript=workflow.source_path("scripts/test_annotate_3pgtf.R"),
         helper=workflow.source_path("../workflow/scripts/threeputrs/annotate_3pgtf.R"),
-    threads: 1
     shell:
         """
         Rscript {params.rscript:q} {params.helper:q} {input.gtf:q} {output:q} > {log:q} 2>&1
+        """
+
+
+rule test_make_threepUTR_gtf:
+    output:
+        "results/threeputr_tests/de_novo.ok",
+    log:
+        "logs/threeputr_tests/de_novo.log",
+    conda:
+        "../workflow/envs/Rbio.yaml"
+    threads: 1
+    params:
+        rscript=workflow.source_path("scripts/test_make_3pgtf.R"),
+        caller=workflow.source_path("../workflow/scripts/threeputrs/make_3pgtf.R"),
+    shell:
+        """
+        Rscript {params.rscript:q} {params.caller:q} {output:q} > {log:q} 2>&1
         """
 
 
@@ -35,9 +52,9 @@ rule check_threeputr_output:
         "logs/threeputr_tests/integration.log",
     conda:
         "../workflow/envs/Rbio.yaml"
+    threads: 1
     params:
         rscript=workflow.source_path("scripts/check_threeputr_output.R"),
-    threads: 1
     shell:
         """
         Rscript {params.rscript:q} {input.gtf:q} {input.cb:q} {output:q} \

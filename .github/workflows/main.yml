@@ -117,6 +117,27 @@ jobs:
         directory: .test
         snakefile: .test/threeputr_tests.smk
         args: "test_annotate_threepUTR_gtf --use-conda --show-failed-logs --cores 1"
+    - name: Test de novo calling fixtures
+      if: matrix.call_threeputrs == 'True'
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/threeputr_tests.smk
+        args: "test_make_threepUTR_gtf --use-conda --show-failed-logs --cores 1"
+    - name: Test clustering and weighted support fixtures
+      if: matrix.call_threeputrs == 'True'
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/threeputr_cluster_tests.smk
+        args: "--use-conda --show-failed-logs --cores 1"
+    - name: Test clustering distance override
+      if: matrix.call_threeputrs == 'True'
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/threeputr_cluster_tests.smk
+        args: "--config bedtools_cluster_distance=20 --use-conda --show-failed-logs --cores 1 --forceall"
     - name: Test workflow (3pUTR calling ${{ matrix.call_threeputrs }})
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:

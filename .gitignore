@@ -29,8 +29,10 @@
 !.test/data/*
 !.test/
 !.test/threeputr_tests.smk
+!.test/threeputr_cluster_tests.smk
 !.test/scripts/
 !.test/scripts/test_annotate_3pgtf.R
+!.test/scripts/test_make_3pgtf.R
 !.test/scripts/check_threeputr_output.R
 !.test/config_ChIP/*
 !.test/config_PROseq/*

@@ -13,9 +13,9 @@ rule annotate_threepUTR_gtf:
         "logs/annotate_threepUTR_gtf/annotate_threepUTR_gtf.log",
     conda:
         "../envs/Rbio.yaml"
+    threads: 1
     params:
         rscript=workflow.source_path("../scripts/threeputrs/annotate_3pgtf.R"),
-    threads: 1
     shell:
         """
         Rscript {params.rscript:q} --gtf {input.gtf:q} --output {output:q} 1> {log:q} 2>&1
@@ -58,10 +58,10 @@ rule bam_to_3pend_bg:
         "logs/bam_to_3pend_bg/{sample}_{strand}.log",
     conda:
         "../envs/genomictools.yaml"
+    threads: 1
     params:
         strandedness=config.get("strandedness", "reverse"),
         coverage_cutoff=config.get("coverage_cutoff", 10),
-    threads: 1
     shell:
         r"""
         T={params.coverage_cutoff}
@@ -99,12 +99,12 @@ rule merge_3pend_bg:
         expand("results/bam2bg/{sample}_informative_{{strand}}.bg", sample=SAMP_NAMES),
     output:
         temp("results/merge_3pend_bg/merged_3pend_{strand}.bg"),
-    params:
-        strandedness=config.get("strandedness", "reverse"),
-    conda:
-        "../envs/genomictools.yaml"
     log:
         "logs/merge_3pend_bg/{strand}.log",
+    conda:
+        "../envs/genomictools.yaml"
+    params:
+        strandedness=config.get("strandedness", "reverse"),
     shell:
         r"""
         strand="{wildcards.strand}"
@@ -139,18 +139,18 @@ rule cluster_PAS_bedtools:
         temp("results/call_PAS/bedtools_clusters_{strand}.bg"),
     log:
         "logs/call_PAS_bedtools/bedtools_cluster_{strand}.log",
-    params:
-        extra=config.get("bedtools_cluster_distance", 50),
     conda:
         "../envs/genomictools.yaml"
     threads: 1
+    params:
+        extra=config.get("bedtools_cluster_distance", 100),
     shell:
         """
         bedtools cluster -d {params.extra} -i {input} > {output} 2>{log}
         """
 
 
-### Get coverage, start & end for all peak clusters
+### Get total endpoint support (depth x interval width), start & end for clusters
 rule summarise_PAS_clusters:
     input:
         "results/call_PAS/bedtools_clusters_{strand}.bg",
@@ -163,7 +163,8 @@ rule summarise_PAS_clusters:
     threads: 1
     shell:
         """
-        bedtools groupby -g 1,5 -c 2,3,4 -o min,max,sum -i {input} > {output} 2> {log}
+        awk 'BEGIN{{OFS="\t"}} {{$4 *= ($3 - $2); print}}' {input} \
+        | bedtools groupby -g 1,5 -c 2,3,4 -o min,max,sum -i - > {output} 2> {log}
         """
 
 
@@ -184,6 +185,7 @@ rule make_threepUTR_gtf:
         "logs/make_threepUTR_gtf/make_threepUTR_gtf.log",
     conda:
         "../envs/Rbio.yaml"
+    threads: 1
     params:
         rscript=workflow.source_path("../scripts/threeputrs/make_3pgtf.R"),
         coverage=config.get("cluster_coverage", 20 * NUM_SAMPS),
@@ -192,7 +194,6 @@ rule make_threepUTR_gtf:
         polyA=config.get("false_polyA_len", 7),
         CPA=config.get("require_CPA_site", False),
         only_annotated=config.get("only_annotated_threeputrs", False),
-    threads: 1
     shell:
         """
         chmod +x {params.rscript}
