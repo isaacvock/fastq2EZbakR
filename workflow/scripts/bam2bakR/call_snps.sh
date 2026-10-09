@@ -72,11 +72,12 @@ then
 
     # Clean this up for all possible mutations:
         # Note: Filtering now inludes cases where both alleles are mutated
+        bcftools view -H "$output_vcf" | \
         awk '$1 !~ /^#/ && length($4) == 1 {if (length($5) == 1) {print $4":"$5":"$1":"$2}
                                             else if (length($5) == 3 && $5 ~ /,/) {split($5, mut, ",")
                                                                                    print $4":"mut[1]":"$1":"$2
                                                                                    print $4":"mut[2]":"$1":"$2}
-                                            }' $output_vcf \
+                                            }' \
             | sort \
             | uniq > $output_txt
 

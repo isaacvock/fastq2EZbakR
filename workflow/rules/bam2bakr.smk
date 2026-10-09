@@ -30,13 +30,15 @@ if config.get("bam2bakr", False):
                 "logs/sort_filter/{sample}.log",
             params:
                 shellscript=workflow.source_path("../scripts/bam2bakR/sort_filter.sh"),
+                layout=BAM2BAKR_FORMAT,
+                sc=SC,
             threads: 8
             conda:
                 "../envs/full.yaml"
             shell:
                 """
                 chmod +x {params.shellscript}
-                {params.shellscript} {threads} {wildcards.sample} {input} {output} 1> {log} 2>&1
+                {params.shellscript} {threads} {wildcards.sample} {input} {output} {params.layout} {params.sc} 1> {log} 2>&1
                 """
 
     else:
@@ -51,13 +53,15 @@ if config.get("bam2bakr", False):
                 "logs/sort_filter/{sample}.log",
             params:
                 shellscript=workflow.source_path("../scripts/bam2bakR/sort_filter.sh"),
+                layout=BAM2BAKR_FORMAT,
+                sc=SC,
             threads: 8
             conda:
                 "../envs/full.yaml"
             shell:
                 """
                 chmod +x {params.shellscript}
-                {params.shellscript} {threads} {wildcards.sample} {input} {output} 1> {log} 2>&1
+                {params.shellscript} {threads} {wildcards.sample} {input} {output} {params.layout} {params.sc} 1> {log} 2>&1
                 """
 
 else:
@@ -72,13 +76,15 @@ else:
             "logs/sort_filter/{sample}.log",
         params:
             shellscript=workflow.source_path("../scripts/bam2bakR/sort_filter.sh"),
+            layout=BAM2BAKR_FORMAT,
+            sc=SC,
         threads: 8
         conda:
             "../envs/full.yaml"
         shell:
             """
             chmod +x {params.shellscript}
-            {params.shellscript} {threads} {wildcards.sample} {input} {output} 1> {log} 2>&1
+            {params.shellscript} {threads} {wildcards.sample} {input} {output} {params.layout} {params.sc} 1> {log} 2>&1
             """
 
 
@@ -255,31 +261,32 @@ if not config.get("lowRAM", False):
 
 
 # Make cB (and potentially cU) file
-rule makecU:
-    input:
-        expand(
-            "results/counts/{sample}_counts.csv.gz",
-            sample=SAMP_NAMES,
-        ),
-    output:
-        mutpos="results/cB/mutpos.csv.gz",
-        mutposfilter="results/cB/mutpos_filtered.csv.gz",
-    params:
-        shellscript=workflow.source_path("../scripts/bam2bakR/makecU.sh"),
-        min_pos_coverage=config["min_pos_coverage"],
-        max_pos_coverage=config["max_pos_coverage"],
-    log:
-        "logs/makecU/makecU.log",
-    threads: MAKECB_THREADS
-    conda:
-        "../envs/full.yaml"
-    shell:
-        """
-        chmod +x {params.shellscript}
-        {params.shellscript} {threads} \
-        {params.min_pos_coverage} {output.mutpos} \
-        {output.mutposfilter} {params.max_pos_coverage} 1> {log} 2>&1
-        """
+if not SC:
+    rule makecU:
+        input:
+            expand(
+                "results/counts/{sample}_counts.csv.gz",
+                sample=SAMP_NAMES,
+            ),
+        output:
+            mutpos="results/cB/mutpos.csv.gz",
+            mutposfilter="results/cB/mutpos_filtered.csv.gz",
+        params:
+            shellscript=workflow.source_path("../scripts/bam2bakR/makecU.sh"),
+            min_pos_coverage=config["min_pos_coverage"],
+            max_pos_coverage=config["max_pos_coverage"],
+        log:
+            "logs/makecU/makecU.log",
+        threads: MAKECB_THREADS
+        conda:
+            "../envs/full.yaml"
+        shell:
+            """
+            chmod +x {params.shellscript}
+            {params.shellscript} {threads} \
+            {params.min_pos_coverage} {output.mutpos} \
+            {output.mutposfilter} {params.max_pos_coverage} 1> {log} 2>&1
+            """
 
 
 rule makecB:

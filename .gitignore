@@ -37,3 +37,5 @@
 !.test/config_ChIP/*
 !.test/config_PROseq/*
 !.github/*
+
+!workflow/scripts/features/read_to_cells.py

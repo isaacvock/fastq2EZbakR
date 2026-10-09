@@ -47,13 +47,14 @@ if config["aligner"] == "star":
 
     # Align with STAR
 
-    if config["PE"]:
+    if TWO_FASTQS:
 
         rule align:
             input:
                 fq1=get_fastq_r1,
                 fq2=get_fastq_r2,
                 index=config["indices"],
+                whitelist=([config["barcode_whitelist"]] if SC and str(config.get("barcode_whitelist", "None")) not in ("None", "-") else []),
             output:
                 aln="results/align/{sample}.bam",
                 sj="results/align/{sample}-SJ.out.tab",
@@ -61,6 +62,7 @@ if config["aligner"] == "star":
                 log_progress="results/align/{sample}-Log.progress.out",
                 log_final="results/align/{sample}-Log.final.out",
                 aln_tx="results/align/{sample}-Aligned.toTranscriptome.out.bam",
+                **({"solo": directory("results/align/{sample}.Solo.out")} if SC else {}),
             log:
                 "logs/align/{sample}_star.log",
             params:

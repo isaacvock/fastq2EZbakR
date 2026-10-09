@@ -1,8 +1,50 @@
 import glob
 import os
+import shlex
+from snakemake.logging import logger
 
 ### Figure out if bam files or fastq files are provided
 config["bam2bakr"] = all(value.endswith(".bam") for value in config["samples"].values())
+
+
+SC = config.get("features", {}).get("sc", False)
+PAIRED_ALIGNMENT = config["PE"] and not SC
+TWO_FASTQS = config["PE"] or SC
+BAM2BAKR_FORMAT = "PE" if PAIRED_ALIGNMENT else "SE"
+
+if SC:
+    if "read1_is_cdna" in config:
+        raise ValueError("read1_is_cdna is no longer supported with features.sc. "
+                         "Use sc_cdna_read: 2 for legacy True, or 1 for legacy False.")
+    if config["lowRAM"]:
+        raise ValueError("features.sc requires the standard DuckDB merge; lowRAM is unsupported.")
+    for option in ("run_rsem", "mutpos"):
+        if config.get(option, False):
+            logger.warning(f"Single-cell mode: disabling {option}; this is a bulk-only analysis.")
+        config[option] = False
+    if config.get("strategies", {}).get("RSEMp", False):
+        logger.warning("Single-cell mode: disabling RSEM+ RNA-fraction inference.")
+    config["strategies"]["RSEMp"] = False
+    if config["download_fastqs"]:
+        config["bam2bakr"] = False
+    if not config["bam2bakr"]:
+        if config["aligner"] != "star":
+            raise ValueError("Single-cell FASTQ input requires STARsolo (aligner: star).")
+        if type(config.get("sc_cdna_read")) is not int or config["sc_cdna_read"] not in (1, 2):
+            raise ValueError("sc_cdna_read must be 1 or 2 for single-cell FASTQ input.")
+        if config.get("BarcodeMate", 0) != 0:
+            raise ValueError("Single-cell mode supports a separate barcode read only: BarcodeMate must be 0.")
+        if config.get("Type", "CB_UMI_Simple") not in ("CB_UMI_Simple", "CB_UMI_Complex"):
+            raise ValueError("Single-cell mode requires CB_UMI_Simple or CB_UMI_Complex with a separate barcode read.")
+        star_options = shlex.split(config["star_align_params"])
+        if "--bamRemoveDuplicatesType" in star_options:
+            position = star_options.index("--bamRemoveDuplicatesType")
+            if position + 1 >= len(star_options) or star_options[position + 1] != "-":
+                raise ValueError("Single-cell mode must retain duplicate reads; bamRemoveDuplicatesType is unsupported.")
+        if "--soloOutFileNames" in star_options:
+            raise ValueError("soloOutFileNames is managed by the workflow to retain STARsolo outputs.")
+    elif config["features"].get("tec", False):
+        raise ValueError("Single-cell BAM input cannot provide TEC assignments without a transcriptome BAM; disable features.tec.")
 
 
 ### If assigning reads to junctions, need to keep jI and jM tags for now
@@ -36,7 +78,7 @@ else:
 
 
 # Determine how many fastqs to look for
-if config["PE"]:
+if TWO_FASTQS:
     READS = [1, 2]
     READ_NAMES = ["r1", "r2"]
 else:
@@ -51,7 +93,7 @@ def get_input_fastqs(wildcards):
 
     if config.get("download_fastqs", True):
         print("Download fastqs: Yes")
-        if config.get("PE", False):
+        if TWO_FASTQS:
             SRA_READS = ["_1.fastq", "_2.fastq"]
             print(f"Sample {wildcards.sample} is paired-end.")
         else:
@@ -85,12 +127,18 @@ def get_input_fastqs(wildcards):
         # Filter files to only include those that end with .fastq or .fastq.gz
         # fastq_files = [f"data/fastq/{wildcards.sample}/{wildcards.sample}.{n}.fastq.gz" for n in ("1", "2")] #sorted([os.path.join(directory, f) for f in all_files if f.endswith('.fastq') or f.endswith('.fastq.gz')])
         # fastq_files = sorted(glob.glob(f"{fastq_path}/*.fastq*"))
+        if SC:
+            fastq_files = [p for p in fastq_files if os.path.isfile(p) and
+                           p.endswith((".fastq", ".fq", ".fastq.gz", ".fq.gz"))]
+            if len(fastq_files) != 2:
+                raise ValueError(f"Single-cell sample {wildcards.sample} requires exactly two FASTQs; found {len(fastq_files)}.")
         print(f"Found files: {sorted(fastq_files)}")
         return sorted(fastq_files)
 
 
 # Check if fastq files are gzipped
 fastq_paths = config["samples"]
+is_gz = False
 
 
 if not config["download_fastqs"]:
@@ -152,6 +200,9 @@ keepcols = ",".join(keepcols)
 
 
 def get_fastqc_read(wildcards):
+    if SC:
+        folder = "sc_preprocessed" if config["skip_trimming"] else "trimmed"
+        return f"results/{folder}/{wildcards.sample}.{wildcards.read}.fastq"
     if config["skip_trimming"]:
         if is_gz:
             return expand(
@@ -185,89 +236,29 @@ def get_fastqc_read(wildcards):
 
 
 def get_fastq_r1(wildcards):
+    if SC:
+        folder = "sc_preprocessed" if config["skip_trimming"] else "trimmed"
+        return f"results/{folder}/{wildcards.sample}.{config['sc_cdna_read']}.fastq"
     if config["skip_trimming"]:
         if is_gz:
-
-            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
-
-                return expand("results/unzipped/{SID}.2.fastq", SID=wildcards.sample)
-
-            else:
-
-                return expand("results/unzipped/{SID}.1.fastq", SID=wildcards.sample)
-
-        else:
-            fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(
-                set(
-                    glob.glob(f"{fastq_path}/*.fastq*")
-                    + glob.glob(f"{fastq_path}/*.fq*")
-                )
-            )
-
-            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True) and config.get("PE", True):
-
-                return fastq_files[1]
-
-            else:
-
-                return fastq_files[0]
-
-    elif config["PE"]:
-
-        if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
-            
-            return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
-
-        else:
-
-            return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
-
-    else:
-        return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
+            return expand("results/unzipped/{SID}.1.fastq", SID=wildcards.sample)
+        fastq_path = config["samples"][wildcards.sample]
+        fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+        return fastq_files[0]
+    return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
 
 
 def get_fastq_r2(wildcards):
+    if SC:
+        folder = "sc_preprocessed" if config["skip_trimming"] else "trimmed"
+        return f"results/{folder}/{wildcards.sample}.{3 - config['sc_cdna_read']}.fastq"
     if config["skip_trimming"]:
         if is_gz:
-
-            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
-
-                return expand("results/unzipped/{SID}.1.fastq", SID=wildcards.sample)
-
-            else:
-
-                return expand("results/unzipped/{SID}.2.fastq", SID=wildcards.sample)
-
-        else:
-            fastq_path = config["samples"][wildcards.sample]
-            fastq_files = sorted(
-                set(
-                    glob.glob(f"{fastq_path}/*.fastq*")
-                    + glob.glob(f"{fastq_path}/*.fq*")
-                )
-            )
-
-            if config.get("features").get("sc", False) and config.get("read1_is_cdna", True) and config.get("PE", True):
-
-                return fastq_files[0]
-
-            else:
-
-                return fastq_files[1]
-
-    elif config["PE"]:
-
-        if config.get("features").get("sc", False) and config.get("read1_is_cdna", True):
-            
-            return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
-
-        else:
-
-            return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
-
-    else:
-        return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
+            return expand("results/unzipped/{SID}.2.fastq", SID=wildcards.sample)
+        fastq_path = config["samples"][wildcards.sample]
+        fastq_files = sorted(set(glob.glob(f"{fastq_path}/*.fastq*") + glob.glob(f"{fastq_path}/*.fq*")))
+        return fastq_files[1]
+    return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
 
 
 # Determine whether or not indexing needs to be done
@@ -331,7 +322,7 @@ STAR_PARAMS = str(config["star_align_params"])
 
 ## Add necessary tags and change other settings as necessary
 
-args = STAR_PARAMS.split()
+args = shlex.split(STAR_PARAMS) if SC else STAR_PARAMS.split()
 
 # Tags to always include
 # Technically, NH, HI, AS, and nM are added by default
@@ -623,7 +614,7 @@ else:
 
 # NOTE: might need to be more careful to handle general case of when both reads could contain sequence information
 # Basically just optimized for scNT-seq at this point
-if config["PE"] and not config.get("features").get("sc", False):
+if PAIRED_ALIGNMENT:
     FC_GENES_PARAMS = " -R CORE -g gene_id -t transcript -p --countReadPairs"
 
 else:
@@ -632,7 +623,7 @@ else:
 
 ## Get extra parameters for exon calling
 
-if config["PE"] and not config.get("features").get("sc", False):
+if PAIRED_ALIGNMENT:
     FC_EXONS_PARAMS = " -R CORE -g gene_id -J -p --countReadPairs"
 
 else:
@@ -641,7 +632,7 @@ else:
 
 ## Get extra parameters for transcript calling
 
-if config["PE"] and not config.get("features").get("sc", False):
+if PAIRED_ALIGNMENT:
     FC_TRANSCRIPTS_PARAMS = " -R CORE -g transcript_id -t exon -O -p --countReadPairs"
 
 else:
@@ -651,7 +642,7 @@ else:
 ## Get extra parameters for exon bin calling
 
 
-if config["PE"] and not config.get("features").get("sc", False):
+if PAIRED_ALIGNMENT:
     FC_EXONBINS_PARAMS = " -R CORE -f -g exon_id -t exonic_part -O -p --countReadPairs"
 
 else:
@@ -660,7 +651,7 @@ else:
 
 ## Get extra parameters for exon-exon junction calling
 
-if config["PE"] and not config.get("features").get("sc", False):
+if PAIRED_ALIGNMENT:
     FC_EEJ_PARAMS = (
         " -R CORE -g junction_id -t eej -O -p --countReadPairs --fracOverlapFeature 0.9"
     )
@@ -671,7 +662,7 @@ else:
 
 ## Get extra parameters for exon-intron junction calling
 
-if config["PE"] and not config.get("features").get("sc", False):
+if PAIRED_ALIGNMENT:
     FC_EIJ_PARAMS = " -R CORE -g junction_id -t eij -O -p --countReadPairs"
 
 else:
@@ -692,6 +683,8 @@ if config["lowRAM"]:
 
 def get_other_output():
     target = []
+    if SC and not config["bam2bakr"]:
+        target.extend(expand("results/align/{sample}.Solo.out", sample=SAMP_NAMES))
 
     if config["final_output"]["cB"]:
         target.append("results/cB/cB.csv.gz")
@@ -1008,7 +1001,7 @@ if config.get("aligner") == "star":
 
 ##### 3'-UTR FEATURECOUNTS PARAMETER #####
 
-if config.get("PE"):
+if PAIRED_ALIGNMENT:
     if config.get("strandedness") == "reverse":
         FC_3UTR_PARAMS = "-R CORE -t 3UTR -O -p --read2pos 5 -g utr_id"
     else:
@@ -1029,7 +1022,7 @@ else:
 
 # Function to get the informative read for 3'-end calling
 def fetch_informative_read(wildcards):
-    if config.get("PE"):
+    if PAIRED_ALIGNMENT:
         return expand(
             "results/informative_read/{sample}_informative.bam", sample=wildcards.sample
         )
@@ -1080,7 +1073,7 @@ def _sc_star_opts(cfg):
     ]:
         v = cfg.get(key, "-")
         if v is not None and str(v) != "-":
-            opts += [flag, _as_str(v)]
+            opts += [flag] + ([str(x) for x in v] if isinstance(v, (list, tuple)) else shlex.split(str(v)))
 
     # Other STARsolo knobs
     for key, flag in [
@@ -1089,26 +1082,32 @@ def _sc_star_opts(cfg):
         ("MultiMappers", "--soloMultiMappers"),
         ("UMIdedup", "--soloUMIdedup"),
         ("UMIfiltering", "--soloUMIfiltering"),
+        ("soloStrand", "--soloStrand"),
+        ("soloBarcodeReadLength", "--soloBarcodeReadLength"),
+        ("soloCellFilter", "--soloCellFilter"),
     ]:
         v = cfg.get(key, "-")
         if v is not None and str(v) != "-":
-            opts += [flag, _as_str(v)]
+            opts += [flag] + ([str(x) for x in v] if isinstance(v, (list, tuple)) else shlex.split(str(v)))
 
     return opts
 
 
-# Only add SOLO settings if doing single-cell assignment
-if config.get("features", {}).get("sc", False):
+# Only add SOLO settings for FASTQ alignment. Explicit config values replace
+# matching free-form flags so STAR never sees duplicated parameters.
+if SC and not config["bam2bakr"]:
     sc_opts = _sc_star_opts(config)
-
-    # Append to existing STAR_EXTRA robustly
-    STAR_EXTRA = " ".join([s for s in [STAR_EXTRA, " ".join(sc_opts)] if s.strip()])
-
-
-if config.get("features", {}).get("sc", False):
-
-    BAM2BAKR_FORMAT = "SE"
-
-else:
-
-    BAM2BAKR_FORMAT = "PE" if config.get("PE") else "SE"
+    sc_opts += ["--soloBarcodeMate", "0"] if "--soloBarcodeMate" not in sc_opts else []
+    solo_flags = {token for token in sc_opts if token.startswith("--")}
+    retained = []
+    i = 0
+    while i < len(args):
+        flag = args[i]
+        if flag in solo_flags:
+            i += 1
+            while i < len(args) and not args[i].startswith("--"):
+                i += 1
+        else:
+            retained.append(flag)
+            i += 1
+    STAR_EXTRA = shlex.join(retained + sc_opts)

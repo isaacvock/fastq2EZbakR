@@ -268,9 +268,8 @@ run_rsem: True
 
 ### Parameters that are only relevant if features: sc == True
 
-# Is read 1 the cDNA that should be aligned to the genome? 
-# If False, read 2 is assumed to be the cDNA
-read1_is_cdna: False
+# FASTQ containing biological cDNA (1 or 2); the other contains barcode/UMI.
+sc_cdna_read: 1
 
 # Path to file with one valid cell-barcode sequence per line
 # Tells STAR what cell barcodes you have (passed to STAR --soloCBwhitelist)

@@ -3,7 +3,7 @@
 ### provided in config rather than the sample IDs specified under
 ### samples in the config. This allows for the {accession} wild
 ### card to be determined.
-if config["PE"]:
+if TWO_FASTQS:
 
     rule download_fastq:
         output:

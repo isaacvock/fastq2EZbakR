@@ -1,5 +1,45 @@
 ## Trim adapters
-if config["PE"]:
+if SC:
+    if config["skip_trimming"]:
+        rule prepare_sc_fastqs:
+            input:
+                fastqs=get_input_fastqs,
+            output:
+                r1=temp("results/sc_preprocessed/{sample}.1.fastq"),
+                r2=temp("results/sc_preprocessed/{sample}.2.fastq"),
+            params:
+                cdna_read=config["sc_cdna_read"],
+                skip=True,
+            log:
+                "logs/preprocess_sc/{sample}.log",
+            conda:
+                "../envs/preprocess_sc.yaml"
+            threads: 1
+            script:
+                "../scripts/preprocess/single_cell.py"
+    else:
+        rule fastp_sc:
+            input:
+                fastqs=get_input_fastqs,
+            output:
+                r1=temp("results/trimmed/{sample}.1.fastq"),
+                r2=temp("results/trimmed/{sample}.2.fastq"),
+                html="results/reports/{sample}.html",
+                json="results/reports/{sample}.json",
+            params:
+                cdna_read=config["sc_cdna_read"],
+                skip=False,
+                adapters=config["fastp_adapters"],
+                extra=config["fastp_parameters"],
+            log:
+                "logs/fastp/{sample}.log",
+            conda:
+                "../envs/preprocess_sc.yaml"
+            threads: 8
+            script:
+                "../scripts/preprocess/single_cell.py"
+
+elif config["PE"]:
 
     # Trim with fastp
     rule fastp:
@@ -48,7 +88,7 @@ else:
             "v2.2.1/bio/fastp"
 
 
-if config["skip_trimming"] and is_gz:
+if not SC and config["skip_trimming"] and is_gz:
 
     # Decompression with pigz cannot be parallelized, so force use of 1 thread
     rule unzip:

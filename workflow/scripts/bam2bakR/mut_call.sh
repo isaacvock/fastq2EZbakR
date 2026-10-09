@@ -25,6 +25,17 @@ touch "$output2"
 # Infer a decent fragment size
 num_reads=$(samtools view -@ "$cpus" -c "$input")
 
+# A fully filtered sample still needs a header-only counts table.
+if [[ "$num_reads" -eq 0 && "$mutpos" != "True" ]]; then
+    empty_bam="./results/counts/${sample}_empty.bam"
+    samtools view -b -H "$input" > "$empty_bam"
+    python "$mutcnt" -b "$empty_bam" --mutType "$mut_tracks" \
+        --minQual "$minqual" --SNPs "$input_snp" --strandedness "$strand" --reads "$format"
+    pigz -p "$cpus" -c "${empty_bam%.bam}_counts.csv" > "$output"
+    rm "$empty_bam" "${empty_bam%.bam}_counts.csv"
+    exit 0
+fi
+
 if [ "$mutpos" = "True" ]; then
 
     # Get the available RAM in MB and convert it to GB
@@ -81,7 +92,7 @@ else
 fi
 
 # Make sure fragment size isn't 0, though if it were, you probably have bigger problems on your hand...
-(( fragment_size++ ))
+fragment_size=$((fragment_size + 1))
 
 
 # Spread the work load so all cpus are working at all times

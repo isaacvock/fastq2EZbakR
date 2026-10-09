@@ -130,10 +130,18 @@ register_feat <- function(view, path, feat_col)
 
 #### "Load" mutation counts ####
 
+# Keep identifiers textual and count columns numeric even for empty SC samples.
+mut_types <- "'FR': 'VARCHAR'"
+if(opt$sc){
+  numeric_cols <- unique(c("nA", "nC", "nG", "nT", strsplit(opt$muttypes, ",")[[1]]))
+  mut_types <- paste(mut_types, "'qname': 'VARCHAR', 'rname': 'VARCHAR', 'sj': 'BOOLEAN'",
+                     paste(sprintf("'%s': 'BIGINT'", numeric_cols), collapse = ", "), sep = ", ")
+}
+
 dbExecute(con, glue("
   CREATE OR REPLACE VIEW muts AS
     SELECT * FROM read_csv_auto(
-      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE, types = {{'FR': 'VARCHAR'}});
+      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE, types = {{{mut_types}}});
 "))
 
 
@@ -153,6 +161,12 @@ if(opt$genes){
 }
 
 
+if(opt$transcripts){
+  register_feat("fc_transcripts", glue("./results/featurecounts_transcripts/{opt$sample}.s.bam.featureCounts"), "transcripts")
+  feature_vect <- c(feature_vect, "transcripts")
+}
+
+
 if(opt$frombam){
   
   cat("Making TEC table...")
@@ -163,7 +177,7 @@ if(opt$frombam){
     SELECT qname,
            bamfile_transcripts
     FROM read_csv_auto(
-      './results/read_to_transcripts/{opt$sample}.csv', header = TRUE);
+      './results/read_to_transcripts/{opt$sample}.csv', header = TRUE{if(opt$sc) ', all_varchar = TRUE' else ''});
   "))
   
   feature_vect <- c(feature_vect, "TEC")
@@ -235,13 +249,17 @@ if(opt$sc){
   
   dbExecute(con, glue("
   CREATE OR REPLACE VIEW sc AS
-    SELECT qname,
-           cell_barcode
+    SELECT qname, cell_barcode, umi
     FROM read_csv_auto(
-      './results/read_to_cells/{opt$sample}.csv', header = TRUE);
+      './results/read_to_cells/{opt$sample}.csv', header = TRUE,
+      columns = {{'qname':'VARCHAR', 'cell_barcode':'VARCHAR', 'umi':'VARCHAR'}},
+      nullstr = '');
   "))
   
-  feature_vect <- c(feature_vect, "cell_barcode")
+  # Reject ambiguous joins instead of multiplying read observations.
+  duplicates <- dbGetQuery(con, "SELECT qname FROM sc GROUP BY qname HAVING COUNT(*) > 1 LIMIT 1")
+  if(nrow(duplicates) > 0) stop("Repeated single-cell qname: ", duplicates$qname[[1]])
+  feature_vect <- c(feature_vect, "cell_barcode", "umi")
   
 }
 
@@ -257,7 +275,7 @@ if(opt$starjunc){
            junction_start,
            junction_end
     FROM read_csv_auto(
-      'results/read_to_junctions/{opt$sample}.csv.gz', header = TRUE);
+      'results/read_to_junctions/{opt$sample}.csv.gz', header = TRUE{if(opt$sc) ', all_varchar = TRUE' else ''});
   "))
   
   feature_vect <- c(feature_vect, "junction_start", "junction_end")
@@ -282,6 +300,11 @@ feat_catalogue <- list(
     select = "COALESCE(eb.exon_bin, '__no_feature') AS exon_bin",
     join   = "LEFT JOIN exonbins     eb USING (qname)"
   ),
+  fc_transcripts = list(
+    flag   = "transcripts",
+    select = "COALESCE(ft.transcripts, '__no_feature') AS transcripts",
+    join   = "LEFT JOIN fc_transcripts ft USING (qname)"
+  ),
   transcripts = list(
     flag   = "frombam",                                # because opt$frombam
     select = "COALESCE(t.bamfile_transcripts, '__no_feature') AS TEC",
@@ -300,7 +323,7 @@ feat_catalogue <- list(
   ),
   sc = list(
     flag   = "sc",
-    select = "COALESCE(sc.cell_barcode, '__no_feature') AS cell_barcode",
+    select = "sc.cell_barcode AS cell_barcode, sc.umi AS umi",
     join   = "LEFT JOIN sc       sc USING (qname)"
   ),
   eej = list(
@@ -355,6 +378,12 @@ cat(sql)
 
 dbExecute(con, sql)
 
+if(opt$sc){
+  sizes <- dbGetQuery(con, "SELECT (SELECT COUNT(*) FROM muts) AS input_n, (SELECT COUNT(*) FROM merged) AS output_n")
+  if(sizes$input_n != sizes$output_n){
+    stop("Single-cell feature joins multiplied mutation observations; check feature-table qname uniqueness.")
+  }
+}
 
 # Write to csv
 dbExecute(con, glue("

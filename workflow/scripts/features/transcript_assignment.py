@@ -103,6 +103,11 @@ for r in samfile:
 
 
 
+if readcount > 1:
+    r_info[1] = '+'.join(sorted(transcripts))
+    wr.writerow(r_info)
+
+samfile.close()
 print('Ended analysis')
 
 ##### Close files ######

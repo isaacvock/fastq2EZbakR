@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # Source the paths and variables:
 cpus=$1
 sample=$2
@@ -14,8 +16,13 @@ touch "$output2"
 
 # Infer a decent fragment size
 num_reads=$(samtools view -@ "$cpus" -c "$input")
+if [[ "$num_reads" -eq 0 ]]; then
+    printf 'qname,junction_start,junction_end\n' | pigz -p "$cpus" > "$output"
+    exit 0
+fi
+
 fragment_size=$(echo "scale=0; $num_reads/$cpus" | bc)
-(( fragment_size++ ))
+fragment_size=$((fragment_size + 1))
 
 
 # Spread the work load so all cpus are working at all times

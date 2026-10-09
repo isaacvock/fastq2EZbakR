@@ -253,19 +253,5 @@ rule read_to_cells:
     conda:
         "../envs/full.yaml"
     threads: 8
-    shell:
-        r"""
-        set -euo pipefail
-
-        (
-          echo "qname,cell_barcode"
-          # BAM is already filtered upstream; only keep read1 to avoid duplicates
-          samtools view -@ {threads} -f 0x40 {input.samples} \
-          | awk -F'\t' '{{
-              cb="";
-              for(i=12;i<=NF;i++){{ if($i ~ /^CB:Z:/){{ cb=substr($i,6); break }} }}
-              if(cb==""){{ for(i=12;i<=NF;i++){{ if($i ~ /^CR:Z:/){{ cb=substr($i,6); break }} }} }}
-              if(cb!="") print $1","cb
-          }}'
-        ) > {output.table} 2> {log}
-        """
+    script:
+        "../scripts/features/read_to_cells.py"

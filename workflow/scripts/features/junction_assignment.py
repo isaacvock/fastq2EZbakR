@@ -122,8 +122,10 @@ for read in samfile:
                 r_info[2] = r_info[2] + "+" + str(jI[index + 1])
 
 
-# Write final row of data
-wr.writerow(r_info)
+# Write final row only if a read passed the junction filters.
+if count > 0:
+    wr.writerow(r_info)
+samfile.close()
     
     
 

@@ -6,6 +6,8 @@ __license__ = "MIT"
 
 import os
 import tempfile
+import shutil
+import shlex
 from snakemake.shell import shell
 
 
@@ -33,6 +35,8 @@ if fq2:
 input_str_fq1 = ",".join(fq1)
 input_str_fq2 = ",".join(fq2) if fq2 is not None else ""
 input_str = " ".join([input_str_fq1, input_str_fq2])
+if snakemake.output.get("solo"):
+    input_str = " ".join(shlex.quote(p) for p in (input_str_fq1, input_str_fq2))
 
 
 if fq1[0].endswith(".gz"):
@@ -55,6 +59,10 @@ elif "BAM Unsorted" in extra:
 else:
     stdout = "SAM"
 
+
+solo = snakemake.output.get("solo")
+if solo:
+    extra += " --soloOutFileNames Solo.out/ features.tsv barcodes.tsv matrix.mtx"
 
 with tempfile.TemporaryDirectory() as tmpdir:
     shell(
@@ -85,3 +93,13 @@ with tempfile.TemporaryDirectory() as tmpdir:
         shell("cat {tmpdir}/Log.final.out > {snakemake.output.log_final:q}")
 
     shell("cat {tmpdir}/Aligned.toTranscriptome.out.bam > {snakemake.output.aln_tx:q}")
+
+    if solo:
+        source = os.path.join(tmpdir, "Solo.out")
+        if not os.path.isdir(source):
+            raise RuntimeError("STARsolo did not produce its expected Solo.out directory")
+        # Snakemake may pre-create directory outputs. Replace only this declared
+        # output so a rerun cannot retain stale matrices or cell-call files.
+        if os.path.exists(solo):
+            shutil.rmtree(solo)
+        shutil.copytree(source, solo)
