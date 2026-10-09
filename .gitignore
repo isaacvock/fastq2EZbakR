@@ -11,6 +11,7 @@
 !pipeline_env.yaml
 !README.md
 !workflow/scripts/*
+!workflow/scripts/threeputrs/*
 !workflow/scripts/alignment/*
 !workflow/scripts/bam2bakR/*
 !workflow/scripts/flatten/*
@@ -26,6 +27,13 @@
 !docs/images/*
 !.snakemake-workflow-catalog.yml
 !.test/data/*
+!.test/
+!.test/threeputr_tests.smk
+!.test/threeputr_cluster_tests.smk
+!.test/scripts/
+!.test/scripts/test_annotate_3pgtf.R
+!.test/scripts/test_make_3pgtf.R
+!.test/scripts/check_threeputr_output.R
 !.test/config_ChIP/*
 !.test/config_PROseq/*
 !.github/*

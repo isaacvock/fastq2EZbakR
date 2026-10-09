@@ -101,8 +101,7 @@ strandedness: "forward"
     # as STAR's unique jI and jM bam file tags are required
   # threeputr = 3'-UTRs. Should only be used with 3'-end sequencing data.
     # This option is paired with `call_threeputrs` which determines whether or not
-    # 3' UTRs are called de novo using your data or whether an annotation of 3'UTRs that
-    # you provide is used
+    # 3' UTRs are called de novo using your data or annotated from your provided GTF
   # eej = exon-exon junctions. Less accurate than junctions but compatible with any
     # bam file. A new GTF file will be created with annotation for the junction_IDs
     # that will show up in the final cB
@@ -126,8 +125,10 @@ features:
 ### Parameters that are only relevant if threeputr == True
 
 # If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
-# I call_threeputrs == False, then your provided GTF (path specified in `annotation`)
-  # must contain values of `3UTR` in a field (column) called "type".
+# If call_threeputrs == False, an augmented copy of `annotation` is created automatically.
+  # Each transcript's terminal exon becomes a 3UTR assignment region with its own utr_id,
+  # including transcripts without CDS annotations. These are not strictly noncoding UTRs.
+  # Existing custom 3UTR records are reused instead; missing utr_id values are filled in.
 call_threeputrs: True
 
 # Only relevant if call_threeputrs == True

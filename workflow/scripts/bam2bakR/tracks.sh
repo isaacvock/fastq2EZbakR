@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 #
 # To make filtered bam files and tracks with different numbers of mutations
 
@@ -23,7 +24,16 @@ genome_fasta=$7
 WSL_b=$8
 normalize=$9
 pyscript=${10}
-output=${11}
+strand=${11}
+output=${12}
+
+if [ "$strand" = "R" ]; then
+    pos_star_strand="str2"
+    min_star_strand="str1"
+else
+    pos_star_strand="str1"
+    min_star_strand="str2"
+fi
 
 
     # Create ./results/tracks/
@@ -72,7 +82,7 @@ echo '* Making .chrom.sizes file'
 
     echo '* Making track headers'
     for b in $muts; do
-        if [ $b == "GA" ]; then
+        if [ "$b" == "GA" ]; then
             colVal[0]='200,200,200'
             colVal[1]='120,188,230'
             colVal[2]='65,125,195'
@@ -96,6 +106,54 @@ echo '* Making .chrom.sizes file'
 
         done
     done
+
+    append_star_signal() {
+        local mut=$1
+        local count=$2
+        local sign=$3
+        local star_strand=$4
+        local out_strand=$5
+        local in_bg="./results/tracks/${sample}_${mut}_${count}_Signal.Unique.${star_strand}.out.bg"
+        local out_bg="./results/tracks/${sample}.${mut}.${count}.${out_strand}.bedGraph"
+
+        if [ ! -s "$in_bg" ]; then
+            echo "Warning: STAR signal file $in_bg is missing or empty; leaving $out_bg with no signal values." >&2
+            return 0
+        fi
+
+        awk -v norm="$normVal" -v sign="$sign" 'BEGIN {OFS="\t"} $1 !~ /^track/ && NF >= 4 {print $1, $2, $3, sign * norm * $4}' "$in_bg" >> "$out_bg"
+    }
+
+    append_track_signals() {
+        for b in $muts; do
+            for count in $(seq 0 5); do
+                append_star_signal "$b" "$count" 1 "$pos_star_strand" "pos"
+                append_star_signal "$b" "$count" -1 "$min_star_strand" "min"
+            done
+        done
+    }
+
+    ensure_bedgraph_data() {
+        local bg=$1
+
+        if ! awk '$1 !~ /^track/ && NF >= 4 {found=1; exit} END {exit found ? 0 : 1}' "$bg"; then
+            awk 'NF >= 2 {print $1 "\t0\t1\t0"; exit}' "$chrom_sizes" >> "$bg"
+        fi
+    }
+
+    ensure_all_bedgraphs_have_data() {
+        if [ ! -s "$chrom_sizes" ]; then
+            echo "Error: chromosome sizes file $chrom_sizes is missing or empty." >&2
+            exit 1
+        fi
+
+        for b in $muts; do
+            for count in $(seq 0 5); do
+                ensure_bedgraph_data "./results/tracks/${sample}.${b}.${count}.pos.bedGraph"
+                ensure_bedgraph_data "./results/tracks/${sample}.${b}.${count}.min.bedGraph"
+            done
+        done
+    }
 
 
     # Filter the reads
@@ -128,16 +186,9 @@ echo '* Making .chrom.sizes file'
 
 
         # Take only unique component of track
-        parallel -j "$cpus" "awk -v norm=${normVal} \
-                                        '{print \$1, \$2, \$3, {3}1*norm*\$4}' \
-                                        ./results/tracks/${sample}_{1}_{2}_Signal.Unique.{4}.out.bg \
-                                        >> ./results/tracks/${sample}.{1}.{2}.{5}.bedGraph" ::: $muts \
-                                                                           ::: $(seq 0 5) \
-                                                                           ::: + - \
-                                                                           :::+ str1 str2 \
-                                                                           :::+ pos min
+        append_track_signals
 
-        rm ./results/tracks/"$sample"*.bg
+        rm -f ./results/tracks/"$sample"*.bg
 
     else
         # Make tracks
@@ -153,16 +204,9 @@ echo '* Making .chrom.sizes file'
 
         # Take only unique component of track
         echo '* Taking only unique components of tracks'
-        parallel -j "$cpus" "awk -v norm=${normVal} \
-                                        '{print \$1, \$2, \$3, {3}1*norm*\$4}' \
-                                        ./results/tracks/${sample}_{1}_{2}_Signal.Unique.{4}.out.bg \
-                                        >> ./results/tracks/${sample}.{1}.{2}.{5}.bedGraph" ::: $muts \
-                                                                           ::: $(seq 0 5) \
-                                                                           ::: + - \
-                                                                           :::+ str1 str2 \
-                                                                           :::+ pos min
+        append_track_signals
 
-        rm ./results/tracks/"$sample"*.bg
+        rm -f ./results/tracks/"$sample"*.bg
 
 
     fi
@@ -184,6 +228,9 @@ echo '* Making .chrom.sizes file'
 
     # Make tdf files from the tracks
     echo '* Make tdf files from tracks'
+    ensure_all_bedgraphs_have_data
+    rm -f ./results/tracks/"$sample".*.tdf
+
     parallel -j "$cpus" igvtools toTDF \
                                 -f mean,max \
                                 ./results/tracks/"$sample".{1}.{2}.{3}.bedGraph \
@@ -196,11 +243,11 @@ echo '* Making .chrom.sizes file'
 
 
     ## Can comment out for debugging purposes
-    rm ./results/tracks/"$sample"*.bam
-    rm ./results/tracks/"$sample"*_reads.txt
-    rm ./results/tracks/"$sample"*.bedGraph
-    rm ./results/tracks/"$sample"*.bai
-    rm ./results/tracks/"$sample"*.out
+    rm -f ./results/tracks/"$sample"*.bam
+    rm -f ./results/tracks/"$sample"*_reads.txt
+    rm -f ./results/tracks/"$sample"*.bedGraph
+    rm -f ./results/tracks/"$sample"*.bai
+    rm -f ./results/tracks/"$sample"*.out
 
     # rm -f "$sample"*.chrom.sizes
     #rm -f igv*
