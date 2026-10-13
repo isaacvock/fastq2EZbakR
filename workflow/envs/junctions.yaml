@@ -4,8 +4,11 @@ channels:
   - nodefaults
 dependencies:
   - r-base =4.3.2
-  - r-optparse =1.7.3
-  - r-dplyr=1.1.4
-  - r-tidyr=1.3.0
-  - bioconductor-rtracklayer=1.62.0
-  - bioconductor-genomicranges=1.54.1
+  - r-dplyr
+  - r-data.table
+  - r-optparse
+  - r-stringr
+  - bioconductor-bsgenome =1.70.1
+  - bioconductor-rtracklayer =1.62.0
+  - bioconductor-genomicranges =1.54.1
+  - bioconductor-biostrings =2.70.1
