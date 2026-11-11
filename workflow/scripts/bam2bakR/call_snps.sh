@@ -25,8 +25,8 @@ then
     # Loop through control samples:
         declare -a bam_list=()
 
-        for cs in ${control_samples[@]}; do
-            name=$(echo "$cs" | cut -d '/' -f 3 | rev | cut -c8- | rev)
+        for cs in "${control_samples[@]}"; do
+            name=$(basename -- "$cs" .s.bam)
 
             sorted="./results/snps/"$name"_sort.bam"
 
@@ -43,8 +43,8 @@ then
 
         echo "${bam_list[@]}" | tr ' ' '\n' > ./results/snps/bam.list
 
-        # for cs in ${control_samples[@]}; do
-        #     NAMES+=($(echo "$cs" | cut -d '/' -f 3 | rev | cut -c8- | rev))
+        # for cs in "${control_samples[@]}"; do
+        #     NAMES+=("$(basename -- "$cs" .s.bam)")
         # done
 
     # Parallelize SNPs calling. Each chromosome in each .bam file is processed as separate job
