@@ -17,7 +17,7 @@
 !workflow/scripts/flatten/*
 !workflow/scripts/preprocess/*
 !workflow/scripts/rsem/*
-!workflow/scripts/rsem_plus/*
+!workflow/scripts/features/*
 !workflow/envs/*
 !workflow/rules/*
 !docs/*

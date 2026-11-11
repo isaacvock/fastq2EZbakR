@@ -24,7 +24,9 @@ download_fastqs: False
 sra_accessions: ["SRR24994162", "SRR24994161"]
 
 
-# Providing bam files? If yes, set to True. Will skip all fastq-related steps (trimming, alignment, etc.)
+# Providing bam files?
+# NOTE: fastq2EZbakR automatically detects BAM mode when download_fastqs is False
+# and every path under `samples` ends with `.bam` (skipping trimming, alignment, etc.).
 bam2bakr: False
 
 ## Paths to data to process
@@ -223,7 +225,11 @@ use_exons_only: True
 ### Miscellaneous parameters
 
 # Skip adapter trimming? 
-  # If True, will skip fastp step
+  # If True, will skip fastp step.
+  # NOTE: Mutation calling intentionally does NOT mask mutations near read ends (minDist),
+  # because masking mutations without masking reference bases deflates mutation rates.
+  # Instead, rely on upstream trimming (fastp) to remove adapters, low-quality tails,
+  # or biased read-end cycles (e.g., via `--trim_front1` / `--trim_tail1` in fastp_parameters).
 skip_trimming: False
 
 
@@ -288,6 +294,9 @@ fc_genes_extra: "--nonOverlap 0"
 # Parameters for assignment of reads to exons
 fc_exons_extra: "--nonOverlap 0"
 
+# Parameters for assignment of reads to transcripts
+fc_transcripts_extra: "-M"
+
 # Parameters for assignment of reads to exonbins
 fc_exonbins_extra: "-M"
 
@@ -333,8 +342,8 @@ star_sam_tags: ["NH", "HI", "AS", "NM", "MD", "nM"]
 
 # Optional parameters to set for star align
   # --sjdbGTFfile is automatically set to be the provided annotation file
-  # --outSAMattributes will also be set and provided the tags specified in `star_sam_tags`, overwriting whatever is set here
-  # Finally, --outSAMType will be force set to BAM SortedByCoordinate, overwriting whatever is set here
+  # --outSAMattributes will also be set and provided the tags specified in `star_sam_tags`, merged with whatever is set here
+  # Finally, --outSAMtype will be force set to BAM Unsorted (as sort_filter immediately queryname-sorts alignments)
   # We suggest turning off soft-clipping to improve assignment of reads to exons
 star_align_params: "--alignEndsType EndToEnd --outFilterType BySJout --outFilterMismatchNmax 20 --outFilterScoreMinOverLread 0.4 --outFilterMatchNminOverLread 0.4"
 

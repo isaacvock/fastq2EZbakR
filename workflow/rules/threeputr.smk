@@ -22,20 +22,23 @@ rule annotate_threepUTR_gtf:
         """
 
 
-### For paired-end experiments, keep only the read that "matters"
-# Read 1, first nucleotide represents the transcript end
+### For paired-end experiments, keep only the informative 3'-end mate
 rule get_informative_read:
     input:
-        "results/sf_reads/{sample}.s.bam",
+        lambda wc: (
+            f"results/coord_bam/{wc.sample}.bam"
+            if config.get("call_threeputrs", False)
+            else f"results/sf_reads/{wc.sample}.s.bam"
+        ),
     output:
-        "results/informative_read/{sample}_informative.bam",
+        temp("results/informative_read/{sample}_informative.bam"),
     log:
         "logs/get_informative_read/{sample}.log",
     conda:
         "../envs/genomictools.yaml"
     threads: 8
     params:
-        # Choose which mate is informative based on strandedness.
+        # Choose which mate is informative based on strandedness:
         #   - reverse-stranded: read 1 (flag 64) gives 3'-end info
         #   - forward-stranded: read 2 (flag 128) gives 3'-end info
         informative_flag=lambda wildcards: (
@@ -43,17 +46,20 @@ rule get_informative_read:
         ),
     shell:
         """
-        samtools view -@ {threads} -hb -f {params.informative_flag} {input} -o {output} 1> {log} 2>&1
+        samtools view -@ {threads} -hb -f {params.informative_flag} {input:q} -o {output:q} 1> {log:q} 2>&1
         """
 
 
-### Convert to PAS location tracks
-# Strandedness handling a bity wonky
+### Convert coordinate-sorted BAM directly to PAS location tracks (zero redundant sort)
 rule bam_to_3pend_bg:
     input:
-        fetch_informative_read,
+        lambda wc: (
+            f"results/informative_read/{wc.sample}_informative.bam"
+            if config.get("PE", False)
+            else f"results/coord_bam/{wc.sample}.bam"
+        ),
     output:
-        "results/bam2bg/{sample}_informative_{strand}.bg",
+        temp("results/bam2bg/{sample}_informative_{strand}.bg"),
     log:
         "logs/bam_to_3pend_bg/{sample}_{strand}.log",
     conda:
@@ -69,7 +75,7 @@ rule bam_to_3pend_bg:
         library="{params.strandedness}"
 
         if [[ "$strand" == "plus" ]]; then
-            if [[ "$library"  == "reverse" ]]; then
+            if [[ "$library" == "reverse" ]]; then
                 strand_symbol="-"
                 pos_symbol="-5"
             else
@@ -77,7 +83,7 @@ rule bam_to_3pend_bg:
                 pos_symbol="-3"
             fi
         elif [[ "$strand" == "minus" ]]; then
-            if [[ "$library"  == "reverse" ]]; then
+            if [[ "$library" == "reverse" ]]; then
                 strand_symbol="+"
                 pos_symbol="-5"
             else
@@ -86,14 +92,13 @@ rule bam_to_3pend_bg:
             fi
         fi
 
-        samtools sort -@ {threads} {input} 2> {log} \
-        | genomeCoverageBed -ibam - -bg -strand "$strand_symbol" "$pos_symbol" 2>> {log} \
+        genomeCoverageBed -ibam {input:q} -bg -strand "$strand_symbol" "$pos_symbol" 2> {log:q} \
         | awk -v T="$T" -v OFS='\t' '$4>=T' \
-        | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
+        | LC_COLLATE=C sort -k1,1 -k2,2n > {output:q}
         """
 
 
-### Merge all bedgraphs into one
+### Merge all bedgraphs into one (supports single-sample and multi-sample experiments)
 rule merge_3pend_bg:
     input:
         expand("results/bam2bg/{sample}_informative_{{strand}}.bg", sample=SAMP_NAMES),
@@ -103,35 +108,20 @@ rule merge_3pend_bg:
         "logs/merge_3pend_bg/{strand}.log",
     conda:
         "../envs/genomictools.yaml"
-    params:
-        strandedness=config.get("strandedness", "reverse"),
     shell:
         r"""
-        strand="{wildcards.strand}"
-        library="{params.strandedness}"
-
-        if [[ "$strand" == "plus" ]]; then
-            if [[ "$library"  == "reverse" ]]; then
-                strand_symbol="-"
-            else
-                strand_symbol="+"
-            fi
-        elif [[ "$strand" == "minus" ]]; then
-            if [[ "$library"  == "reverse" ]]; then
-                strand_symbol="+"
-            else
-                strand_symbol="-"
-            fi
+        inputs=({input:q})
+        if [[ "${{#inputs[@]}}" -eq 1 ]]; then
+            LC_COLLATE=C sort -k1,1 -k2,2n "${{inputs[0]}}" > {output:q} 2> {log:q}
+        else
+            bedtools unionbedg -i {input:q} 2> {log:q} \
+            | awk 'BEGIN{{OFS="\t"}}{{s=0; for(i=4;i<=NF;i++) s+=$i; print $1,$2,$3,s}}' \
+            | LC_COLLATE=C sort -k1,1 -k2,2n > {output:q} 2>> {log:q}
         fi
-
-        bedtools unionbedg -i {input} \
-        | awk 'BEGIN{{OFS="\t"}}{{s=0; for(i=4;i<=NF;i++) s+=$i; print $1,$2,$3,s}}' \
-        | LC_COLLATE=C sort -k1,1 -k2,2n > {output} 2>{log}
         """
 
 
-### Alternatively, identify regions of transcript end clusters, representing likely
-### cleavage and polyadenylation sites
+### Identify regions of transcript end clusters representing cleavage/polyadenylation sites
 rule cluster_PAS_bedtools:
     input:
         "results/merge_3pend_bg/merged_3pend_{strand}.bg",
@@ -146,7 +136,7 @@ rule cluster_PAS_bedtools:
         extra=config.get("bedtools_cluster_distance", 100),
     shell:
         """
-        bedtools cluster -d {params.extra} -i {input} > {output} 2>{log}
+        bedtools cluster -d {params.extra} -i {input:q} > {output:q} 2> {log:q}
         """
 
 
@@ -163,14 +153,12 @@ rule summarise_PAS_clusters:
     threads: 1
     shell:
         """
-        awk 'BEGIN{{OFS="\t"}} {{$4 *= ($3 - $2); print}}' {input} \
-        | bedtools groupby -g 1,5 -c 2,3,4 -o min,max,sum -i - > {output} 2> {log}
+        awk 'BEGIN{{OFS="\t"}} {{$4 *= ($3 - $2); print}}' {input:q} \
+        | bedtools groupby -g 1,5 -c 2,3,4 -o min,max,sum -i - > {output:q} 2> {log:q}
         """
 
 
 ### Use peak calls to make UTR GTF
-# Strand logic a bit confusing as + is - and - is + due to reverse
-# strandedness of libraries
 rule make_threepUTR_gtf:
     input:
         bed=expand(
@@ -196,17 +184,16 @@ rule make_threepUTR_gtf:
         only_annotated=config.get("only_annotated_threeputrs", False),
     shell:
         """
-        chmod +x {params.rscript}
-        {params.rscript} \
-            --bed_minus {input.bed[0]} \
-            --bed_plus {input.bed[1]} \
-            --gtf {input.gtf} \
-            --fasta {input.fasta} \
-            --output {output} \
+        Rscript {params.rscript:q} \
+            --bed_minus {input.bed[0]:q} \
+            --bed_plus {input.bed[1]:q} \
+            --gtf {input.gtf:q} \
+            --fasta {input.fasta:q} \
+            --output {output:q} \
             --extension {params.extension} \
             --min_coverage {params.coverage} \
             --false_polyA_len {params.polyA} \
             --require_CPA {params.CPA} \
             --only_annotated {params.only_annotated} \
-            --min_fxn {params.fxn} 1> {log} 2>&1
+            --min_fxn {params.fxn} 1> {log:q} 2>&1
         """

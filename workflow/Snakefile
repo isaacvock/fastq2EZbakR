@@ -1,5 +1,6 @@
 from snakemake.utils import min_version
 
+
 ##### set minimum snakemake version #####
 
 min_version("6.4.1")
@@ -10,13 +11,16 @@ min_version("6.4.1")
 
 configfile: "config/config.yaml"
 
+
 container: "docker://docker.io/isaacvock/snakeverse-base:0.1.0"
 
-##### Impute potentially missing config parameters for backwards compatibiltiy #####
 
-# Dumb way to do this, need to refactor to just use config.get() everywhere
-if "lowRAM" not in config:
-    config["lowRAM"] = False
+##### Impute potentially missing config parameters for backwards compatibility #####
+
+if config.get("lowRAM", False):
+    logger.warning(
+        "config['lowRAM'] is deprecated and ignored; merge_features_and_muts now streams via DuckDB."
+    )
 
 if "run_rsem" not in config:
     config["run_rsem"] = True
@@ -31,13 +35,15 @@ if "sra_accessions" not in config:
     config["sra_accessions"] = []
 
 if "strategies" in config:
-    config["features"]["tec"] = config["strategies"]["Transcripts"]
+    if config["strategies"].get("RSEMp", False):
+        logger.warning(
+            "config['strategies']['RSEMp'] (RSEM_plus) has been retired; use features.tec + EZbakR isoform deconvolution instead."
+        )
+    if "Transcripts" in config["strategies"]:
+        config["features"]["tec"] = config["strategies"]["Transcripts"]
 
 if "tec" not in config["features"]:
     config["features"]["tec"] = False
-
-if "strategies" not in config:
-    config["strategies"] = {"RSEMp": False, "Transcripts": config["features"]["tec"]}
 
 if "transcripts" not in config["features"]:
     config["features"]["transcripts"] = False
@@ -54,18 +60,11 @@ if "bcftools_call_params" not in config:
 if "bcftools_mpileup_params" not in config:
     config["bcftools_mpileup_params"] = ""
 
+
 ##### setup report #####
 
 
 report: "report/workflow.rst"
-
-
-##### setup singularity #####
-
-
-# # this container defines the underlying OS for each job when using the workflow
-# # with --use-conda --use-singularity
-# container: "docker://continuumio/miniconda3"
 
 
 ##### load rules #####
@@ -74,7 +73,6 @@ report: "report/workflow.rst"
 include: "rules/common.smk"
 include: "rules/bam2bakr.smk"
 include: "rules/features.smk"
-include: "rules/lowram.smk"
 
 
 if config["download_fastqs"]:
@@ -87,16 +85,12 @@ if not config["bam2bakr"]:
     include: "rules/preprocess.smk"
     include: "rules/alignment.smk"
     include: "rules/rsem.smk"
-    include: "rules/rsem_plus.smk"
     include: "rules/multiQC.smk"
 
 
 if config.get("features").get("threeputr", False):
 
     include: "rules/threeputr.smk"
-
-
-# include: "rules/salmon.smk"
 
 
 if config["features"]["exonic_bins"]:

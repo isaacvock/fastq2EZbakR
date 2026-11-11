@@ -28,6 +28,5 @@ rule add_exon:
     threads: 1
     shell:
         """
-        chmod +x {params.shellscript}
-        {params.shellscript} {input} {output}
+        bash {params.shellscript:q} {input:q} {output:q} 1> {log:q} 2>&1
         """

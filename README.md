@@ -103,7 +103,7 @@ cd path/to/working/directory
 
 # (MODIFIED STEP) "DEPLOY" PIPELINE TO YOUR WORKING DIRECTORY (only need to do once per dataset)
 cp -r path/to/fastq2EZbakR/workflow/ ./
-rp -r path/to/fastq2EZbakR/config/ ./
+cp -r path/to/fastq2EZbakR/config/ ./
 
 ###
 # EDIT CONFIG FILE (need to do once for each new dataset)

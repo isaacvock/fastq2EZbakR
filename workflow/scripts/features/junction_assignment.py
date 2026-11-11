@@ -1,130 +1,117 @@
-'''
-    File name: count_reads_only.py
+#!/usr/bin/env python3
+"""
+    File name: junction_assignment.py
     Author: Isaac Vock
     Email: isaac.vock@gmail.com
-    Orcid: 
-    Date created: 24/05/2022
-    Date last modified: 24/05/2022
-    Version: 1.0.0
     License: GPLv3
-    Python Version: 
-    Packages: pysam 
-    Description: Script for creating table of junctions read mapped to
-'''
+    Description: Assign queryname-grouped BAM alignments to deduplicated splice junctions via STAR jM/jI tags.
+"""
 
-import os
-import pysam
-import csv
 import argparse
-import datetime
-import sys
+import csv
+import gzip
+import itertools
+import os
 
-# Parse commandline arguments
-parser = argparse.ArgumentParser(description='This is a script to assign reads to junctions they overlap')
-requiredNamed = parser.add_argument_group('required named arguments')
-requiredNamed.add_argument('-b', '--bam', type=str, required=True, metavar = 'in_file.bam',
-                    help='Bam file to process')
-parser.add_argument('--filterBySJout', action='store_false',
-                    help="Do not output data for reads overlapping junctions not included in STAR's SJout.tab file")
-parser.add_argument('--filterNonCanon', action='store_true',
-                    help="Do not output data for reads overlapping junctions that are non-canonical")
-args = parser.parse_args()
+import pysam
 
 
-# Get input bam file
-inputName = args.bam.split('.bam')[0] 
-output = inputName + '_junctions.csv'
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Assign reads/read-pairs to splice junctions they overlap"
+    )
+    required_named = parser.add_argument_group("required named arguments")
+    required_named.add_argument(
+        "-b", "--bam", type=str, required=True, metavar="in_file.bam",
+        help="Queryname-sorted BAM file to process",
+    )
+    parser.add_argument(
+        "-o", "--output", type=str, default=None,
+        help="Output CSV or CSV.GZ path (default: <bam_prefix>_junctions.csv)",
+    )
+    parser.add_argument(
+        "-t", "--threads", type=int, default=1,
+        help="Number of htslib decompression threads (default: 1)",
+    )
+    parser.add_argument(
+        "--filterBySJout", dest="filterBySJout", action="store_true", default=True,
+        help="Only output junctions included in STAR's SJ.out.tab (jM >= 20; default: True)",
+    )
+    parser.add_argument(
+        "--noFilterBySJout", dest="filterBySJout", action="store_false",
+        help="Allow junctions not present in STAR's SJ.out.tab",
+    )
+    parser.add_argument(
+        "--filterNonCanon", action="store_true", default=False,
+        help="Exclude non-canonical junctions (jM == 0 or jM == 20)",
+    )
+    return parser.parse_args()
 
 
-# Assess filtering conditoin
-SJfilter = True
-NCfilter = args.filterNonCanon
+def main():
+    args = parse_args()
 
-#  Set .csv file for writing (simulating _counts.rds file)
-header = ['qname', 'junction_start', 'junction_end']
-myfile = open(output, 'w', newline='')
-wr = csv.writer(myfile)
-wr.writerow(header)
+    input_name = args.bam[:-4] if args.bam.endswith(".bam") else args.bam.split(".bam")[0]
+    output_path = args.output if args.output else (input_name + "_junctions.csv")
+    is_gz = output_path.endswith(".gz")
 
+    sj_filter = args.filterBySJout
+    nc_filter = args.filterNonCanon
 
-# Row
-r_info = [''] + 2*[0]
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    opener = (
+        (lambda p: gzip.open(p, "wt", newline="", compresslevel=3))
+        if is_gz
+        else (lambda p: open(p, "w", newline=""))
+    )
 
-# Set .bam file for reading
-samfile = pysam.AlignmentFile(args.bam, 'rb')
+    header = ["qname", "junction_start", "junction_end"]
 
+    with pysam.AlignmentFile(args.bam, "rb", threads=max(1, args.threads)) as samfile, opener(
+        output_path
+    ) as out_fh:
+        wr = csv.writer(out_fh)
+        wr.writerow(header)
 
-first_in_pair = True
+        for qname, group in itertools.groupby(samfile, key=lambda r: r.query_name):
+            junctions = set()
 
-count = 0
-for read in samfile:
+            for read in group:
+                if read.is_unmapped:
+                    continue
 
-    junction_tags = [(tag, value) for tag, value in read.tags if tag in ['jI', 'jM']]
+                has_jm = read.has_tag("jM")
+                has_ji = read.has_tag("jI")
+                if not (has_jm and has_ji):
+                    if read.cigarstring and "N" in read.cigarstring:
+                        raise RuntimeError(
+                            f"Spliced alignment '{qname}' is missing STAR jM/jI tags. "
+                            "Ensure STAR was run with '--outSAMattributes ... jI jM' when features.junctions is enabled."
+                        )
+                    continue
 
-    if junction_tags[0][0] == 'jM':
-        
-        jM = junction_tags[0][1]
-        jI = junction_tags[1][1]
-    
-    else:
-        
-        jM = junction_tags[1][1]
-        jI = junction_tags[0][1]
+                jm = read.get_tag("jM")
+                ji = read.get_tag("jI")
+                n_junc = len(jm)
 
-    check = jM[0] != -1
-    
-    SJcheck = True
-    NCcheck = True
+                for k in range(n_junc):
+                    motif = jm[k]
+                    if motif == -1:
+                        continue
+                    if sj_filter and motif < 20:
+                        continue
+                    if nc_filter and (motif == 0 or motif == 20):
+                        continue
+                    start = int(ji[2 * k])
+                    end = int(ji[2 * k + 1])
+                    junctions.add((start, end))
 
-    # NOTE: This only checks first junction;
-    # need to think about if I want to handle
-    # multi-junction case differently
-    if SJfilter:
-        SJcheck = jM[0] >= 20
-
-    if NCfilter:
-        NCcheck = jM[0] != 0 and jM[0] != 20
-
-    if check and SJcheck and NCcheck:
-
-        count += 1
-
-        # Gotta concatenate information for read pairs
-        if r_info[0] == read.query_name:
-
-            first_in_pair = False
-
-        else:   
-
-            # Write data if this isn't the first read
-            if count > 1:
-
-                wr.writerow(r_info)
-
-            r_info[0] = read.query_name
-            first_in_pair = True
-
-        nj = len(jM)
-
-        for j in range(nj):
-
-            index = j*2
+            if junctions:
+                ordered = sorted(junctions)
+                starts = "+".join(str(s) for s, _ in ordered)
+                ends = "+".join(str(e) for _, e in ordered)
+                wr.writerow([qname, starts, ends])
 
 
-            if j == 0 and first_in_pair:
-
-                r_info[1] = str(jI[index])
-                r_info[2] = str(jI[index + 1])    
-
-            else:
-
-                r_info[1] = r_info[1] + "+" + str(jI[index])
-                r_info[2] = r_info[2] + "+" + str(jI[index + 1])
-
-
-# Write final row of data
-wr.writerow(r_info)
-    
-    
-
-myfile.close()
+if __name__ == "__main__":
+    main()

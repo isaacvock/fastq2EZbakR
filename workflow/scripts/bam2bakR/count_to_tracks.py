@@ -56,7 +56,11 @@ with gzip.open(args.inputFile, mode="rt") as f:
     table = list(zip( range(0,len(fileName)), cycle(range(0,6)), chain(*[[x]*6 for x in mutIndex]) ))  # create list[[file_index, mutations_count, mutation_type_index], ...]
 
 
-    for row in csv_reader:
+    try:
+        for row in csv_reader:
 
-        for z in table:
-            if int( row[z[2]] ) >= z[1]: fs[z[0]].write(row[0] + '\n')   # if  mut_type_count >= count  then   fs[file_id].write(read_name + '\n')
+            for z in table:
+                if int( row[z[2]] ) >= z[1]: fs[z[0]].write(row[0] + '\n')   # if  mut_type_count >= count  then   fs[file_id].write(read_name + '\n')
+    finally:
+        for fh in fs:
+            fh.close()

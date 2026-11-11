@@ -1,4 +1,4 @@
-### THESE RULES PERTAIN TO THE ASSIGNMENT OF READS TO FEATURES WITH FEATURECOUNTS
+### THESE RULES PERTAIN TO THE ASSIGNMENT OF READS TO FEATURES
 
 
 # Assign reads to genes
@@ -15,7 +15,7 @@ rule featurecounts_genes:
         temp("results/featurecounts_genes/{sample}.s.bam.featureCounts"),
     threads: 20
     params:
-        strand=FC_STRAND,  # optional; strandness of the library (0: unstranded [default], 1: stranded, and 2: reversely stranded)
+        strand=FC_STRAND,
         extra=config["fc_genes_extra"] + FC_GENES_PARAMS,
     log:
         "logs/featurecounts_genes/{sample}.log",
@@ -38,7 +38,7 @@ rule featurecounts_exons:
         temp("results/featurecounts_exons/{sample}.s.bam.featureCounts"),
     threads: 20
     params:
-        strand=FC_STRAND,  # optional; strandness of the library (0: unstranded [default], 1: stranded, and 2: reversely stranded)
+        strand=FC_STRAND,
         extra=config["fc_exons_extra"] + FC_EXONS_PARAMS,
     log:
         "logs/featurecounts_exons/{sample}.log",
@@ -60,7 +60,7 @@ rule featurecounts_transcripts:
         temp("results/featurecounts_transcripts/{sample}.s.bam.featureCounts"),
     threads: 20
     params:
-        strand=FC_STRAND,  # optional; strandness of the library (0: unstranded [default], 1: stranded, and 2: reversely stranded)
+        strand=FC_STRAND,
         extra=config["fc_transcripts_extra"] + FC_TRANSCRIPTS_PARAMS,
     log:
         "logs/featurecounts_transcripts/{sample}.log",
@@ -82,7 +82,7 @@ rule featurecounts_exonbins:
         temp("results/featurecounts_exonbins/{sample}.s.bam.featureCounts"),
     threads: 20
     params:
-        strand=FC_STRAND,  # optional; strandness of the library (0: unstranded [default], 1: stranded, and 2: reversely stranded)
+        strand=FC_STRAND,
         extra=config["fc_exonbins_extra"] + FC_EXONBINS_PARAMS,
     log:
         "logs/featurecounts_exonbins/{sample}.log",
@@ -92,8 +92,7 @@ rule featurecounts_exonbins:
 
 if config.get("run_rsem", True):
 
-    # Get the set of isoforms a read maps to from the transcriptome bam
-    # TO-DO: No reason this can't be split up and multi-threaded
+    # Get the set of isoforms a read maps to from the RSEM transcriptome bam
     rule read_to_transcripts:
         input:
             bam="results/rsem/{sample}.transcript.bam",
@@ -103,14 +102,13 @@ if config.get("run_rsem", True):
             "logs/read_to_transcripts/{sample}.log",
         conda:
             "../envs/full.yaml"
-        threads: 1
+        threads: 4
         script:
             "../scripts/features/transcript_assignment.py"
 
 else:
 
-    # Get the set of isoforms a read maps to from the transcriptome bam
-    # TO-DO: No reason this can't be split up and multi-threaded
+    # Get the set of isoforms a read maps to from the STAR transcriptome bam
     rule read_to_transcripts:
         input:
             bam="results/align/{sample}-Aligned.toTranscriptome.out.bam",
@@ -120,33 +118,27 @@ else:
             "logs/read_to_transcripts/{sample}.log",
         conda:
             "../envs/full.yaml"
-        threads: 1
+        threads: 4
         script:
             "../scripts/features/transcript_assignment.py"
 
 
-# Get set of junctions a read overlaps
+# Get deduplicated set of junctions each read/pair overlaps directly via pysam
 rule read_to_junctions:
     input:
-        "results/sf_reads/{sample}.s.bam",
+        bam="results/sf_reads/{sample}.s.bam",
     output:
-        temp("results/read_to_junctions/{sample}.csv.gz"),
-        temp("results/read_to_junctions/{sample}_check.txt"),
+        table=temp("results/read_to_junctions/{sample}.csv.gz"),
     params:
-        shellscript=workflow.source_path("../scripts/features/junction_assignment.sh"),
         pythonscript=workflow.source_path("../scripts/features/junction_assignment.py"),
-        awkscript=workflow.source_path("../scripts/rsem_plus/fragment_sam_rsem.awk"),
     log:
         "logs/read_to_junctions/{sample}.log",
-    threads: 32
+    threads: 8
     conda:
         "../envs/full.yaml"
     shell:
         """
-        chmod +x {params.shellscript}
-        chmod +x {params.pythonscript}
-        chmod +x {params.awkscript}
-        {params.shellscript} {threads} {wildcards.sample} {input} {output} {params.pythonscript} {params.awkscript}  1> {log} 2>&1
+        python {params.pythonscript:q} -b {input.bam:q} -o {output.table:q} -t {threads} 1> {log:q} 2>&1
         """
 
 
@@ -166,12 +158,11 @@ rule junction_annotation:
         "../envs/junctions.yaml"
     shell:
         r"""
-        chmod +x {params.rscript}
-        {params.rscript} -r {input} -o {output} {params.extra} 1> {log} 2>&1
+        Rscript {params.rscript:q} -r {input:q} -o {output:q} {params.extra} 1> {log:q} 2>&1
         """
 
 
-# Experimental: assign reads to exon-exon junctions through ad-hoc not 100%-accurate approach
+# Experimental: assign reads to exon-exon junctions through ad-hoc approach
 rule featurecounts_eej:
     input:
         samples="results/sf_reads/{sample}.s.bam",
@@ -185,7 +176,7 @@ rule featurecounts_eej:
         temp("results/featurecounts_eej/{sample}.s.bam.featureCounts"),
     threads: 20
     params:
-        strand=FC_STRAND,  # optional; strandness of the library (0: unstranded [default], 1: stranded, and 2: reversely stranded)
+        strand=FC_STRAND,
         extra=config["fc_eej_extra"] + FC_EEJ_PARAMS,
     log:
         "logs/featurecounts_eej/{sample}.log",
@@ -193,7 +184,7 @@ rule featurecounts_eej:
         "v7.2.0/bio/subread/featurecounts"
 
 
-# Experimental: assign reads to exon-intron junctions through ad-hoc not 100%-accurate approach
+# Experimental: assign reads to exon-intron junctions through ad-hoc approach
 rule featurecounts_eij:
     input:
         samples="results/sf_reads/{sample}.s.bam",
@@ -207,7 +198,7 @@ rule featurecounts_eij:
         temp("results/featurecounts_eij/{sample}.s.bam.featureCounts"),
     threads: 20
     params:
-        strand=FC_STRAND,  # optional; strandness of the library (0: unstranded [default], 1: stranded, and 2: reversely stranded)
+        strand=FC_STRAND,
         extra=config["fc_eij_extra"] + FC_EIJ_PARAMS,
     log:
         "logs/featurecounts_eij/{sample}.log",
@@ -215,21 +206,18 @@ rule featurecounts_eij:
         "v7.2.0/bio/subread/featurecounts"
 
 
-# Assign reads to 3'-UTRs using only single nucleotide of read (3'-end position) for assignment
-# TO-DO: Might need to add a step for paired-end data where only informative read is extracted
-# and passed to this step. Not sure for paired-end data how featureCounts' read2pos works (will it
-# use both read's single base?)
+# Assign reads to 3'-UTRs using only the single 3'-end nucleotide of the informative mate
 rule featurecounts_3utr:
     input:
-        samples="results/sf_reads/{sample}.s.bam",
+        samples=fetch_informative_read,
         annotation=THREEPUTR_ANNOTATION,
     output:
         multiext(
             "results/featurecounts_3utr/{sample}",
             ".featureCounts",
-            ".featureCounts.summary"
+            ".featureCounts.summary",
         ),
-        temp("results/featurecounts_3utr/{sample}.s.bam.featureCounts"),
+        temp(f"results/featurecounts_3utr/{{sample}}{FC_3UTR_CORE_EXT}"),
     conda:
         "../envs/genomictools.yaml"
     params:

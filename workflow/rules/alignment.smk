@@ -19,8 +19,7 @@ rule modify_annotation:
         "logs/modify_annotation/modify_annotation.log",
     shell:
         """
-        chmod +x {params.rscript}
-        {params.rscript} -g {input.gtf} -o {output.mod_gtf} 1> {log} 2>&1
+        Rscript {params.rscript:q} -g {input.gtf:q} -o {output.mod_gtf:q} 1> {log:q} 2>&1
         """
 
 
@@ -46,7 +45,6 @@ if config["aligner"] == "star":
                 "../scripts/alignment/star-index.py"
 
     # Align with STAR
-
     if config["PE"]:
 
         rule align:
@@ -64,9 +62,8 @@ if config["aligner"] == "star":
             log:
                 "logs/align/{sample}_star.log",
             params:
-                reads_per_gene=lambda wc: "GeneCounts" in config["star_align_params"],
-                chim_junc=lambda wc: "--chimOutType Junctions"
-                in config["star_align_params"],
+                reads_per_gene=lambda wc: "GeneCounts" in STAR_EXTRA,
+                chim_junc=lambda wc: "--chimOutType Junctions" in STAR_EXTRA,
                 idx=lambda wc, input: input.index,
                 extra=STAR_EXTRA,
                 out_reads_per_gene="results/align/{sample}-ReadsPerGene.out.tab",
@@ -93,9 +90,8 @@ if config["aligner"] == "star":
             log:
                 "logs/align/{sample}_star.log",
             params:
-                reads_per_gene=lambda wc: "GeneCounts" in config["star_align_params"],
-                chim_junc=lambda wc: "--chimOutType Junctions"
-                in config["star_align_params"],
+                reads_per_gene=lambda wc: "GeneCounts" in STAR_EXTRA,
+                chim_junc=lambda wc: "--chimOutType Junctions" in STAR_EXTRA,
                 idx=lambda wc, input: input.index,
                 extra=STAR_EXTRA,
                 out_reads_per_gene="results/align/{sample}-ReadsPerGene.out.tab",
@@ -114,7 +110,6 @@ if config["aligner"] == "star":
 
 if config["aligner"] == "hisat2":
     if make_index:
-        ### Add annotated splice junctions to index
         if config["annotation"]:
 
             # Get exons from annotation using hisat2's custom python script
@@ -129,7 +124,7 @@ if config["aligner"] == "hisat2":
                     "../envs/hisat2.yaml"
                 threads: 1
                 shell:
-                    "hisat2_extract_exons.py {input.annotation} 1> {output} 2> {log}"
+                    "hisat2_extract_exons.py {input.annotation:q} 1> {output:q} 2> {log:q}"
 
             # Get splice sites from annotation using hisat2's custom python script
             rule get_ss:
@@ -143,9 +138,9 @@ if config["aligner"] == "hisat2":
                     "../envs/hisat2.yaml"
                 threads: 1
                 shell:
-                    "hisat2_extract_splice_sites.py {input.annotation} 1> {output} 2> {log}"
+                    "hisat2_extract_splice_sites.py {input.annotation:q} 1> {output:q} 2> {log:q}"
 
-            # Build hisat2 index
+            # Build hisat2 index with splice sites and exons
             rule index:
                 input:
                     fasta=config["genome"],
@@ -168,13 +163,10 @@ if config["aligner"] == "hisat2":
 
         else:
 
-            # Build hisat2 index
+            # Build hisat2 index without annotation
             rule index:
                 input:
                     fasta=config["genome"],
-                    annotation=config["annotation"],
-                    ss="results/get_ss/splice_sites.ss",
-                    exons="results/get_exon/exons.exon",
                 output:
                     directory(config["indices"]),
                 params:
