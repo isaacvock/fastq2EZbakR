@@ -127,7 +127,7 @@ def get_fastqc_read(wildcards):
     )
 
 
-### STAR HELPERS
+### STAR / HISAT-3N READ HELPERS
 
 
 def get_fastq_r1(wildcards):
@@ -178,6 +178,71 @@ hisat2_indices = glob.glob(f"{INDEX_PATH}/*.ht2*")
 
 if config["aligner"] == "hisat2":
     make_index = len(hisat2_indices) == 0
+
+
+### HISAT-3N HELPERS
+
+hisat3n_indices = glob.glob(f"{INDEX_PATH}/*.3n.*.ht2*")
+
+if config["aligner"] == "hisat3n":
+    make_index = len(hisat3n_indices) == 0
+
+if str(config.get("hisat3n_base_change", "")).strip():
+    HISAT3N_BASE_CHANGE = str(config["hisat3n_base_change"]).strip()
+else:
+    if not Mutation_Types or len(Mutation_Types[0]) != 2:
+        raise ValueError(
+            f"Cannot derive hisat3n_base_change from mut_tracks='{config.get('mut_tracks')}'. "
+            "Specify hisat3n_base_change explicitly (e.g. 'T,C')."
+        )
+    HISAT3N_BASE_CHANGE = f"{Mutation_Types[0][0]},{Mutation_Types[0][1]}"
+    if config["aligner"] == "hisat3n" and len(Mutation_Types) > 1:
+        logger.warning(
+            f"HISAT-3N supports a single --base-change per index/alignment run; "
+            f"using '{HISAT3N_BASE_CHANGE}' from first entry of mut_tracks='{config['mut_tracks']}'."
+        )
+
+if config.get("hisat3n_index_base"):
+    HISAT3N_BASE = f"{INDEX_PATH}/{config['hisat3n_index_base']}"
+elif hisat3n_indices:
+    _detected_h3n_prefix = os.path.basename(sorted(hisat3n_indices)[0]).split(".3n.")[0]
+    HISAT3N_BASE = f"{INDEX_PATH}/{_detected_h3n_prefix}"
+else:
+    HISAT3N_BASE = f"{INDEX_PATH}/hisat3n_index"
+
+HISAT3N_REPEAT_FLAG = (
+    "--repeat-index" if config.get("hisat3n_repeat_index", False) else ""
+)
+
+_h3n_user_tokens = str(config.get("hisat3n_align_params", "")).split()
+_h3n_auto_flags = []
+if "--rna-strandness" not in _h3n_user_tokens:
+    if config["strandedness"] == "reverse":
+        _h3n_auto_flags.append(
+            "--rna-strandness RF" if config["PE"] else "--rna-strandness R"
+        )
+    elif config["strandedness"] in ("yes", "forward"):
+        _h3n_auto_flags.append(
+            "--rna-strandness FR" if config["PE"] else "--rna-strandness F"
+        )
+if (
+    config.get("hisat3n_directional", True)
+    and "--directional-mapping" not in _h3n_user_tokens
+    and "--directional-mapping-reverse" not in _h3n_user_tokens
+):
+    if config["strandedness"] == "reverse":
+        _h3n_auto_flags.append("--directional-mapping-reverse")
+    elif config["strandedness"] in ("yes", "forward"):
+        _h3n_auto_flags.append("--directional-mapping")
+
+HISAT3N_ALIGN_EXTRA = " ".join(
+    part
+    for part in [
+        " ".join(_h3n_auto_flags),
+        str(config.get("hisat3n_align_params", "")).strip(),
+    ]
+    if part
+)
 
 
 ### Extra parameters passed to STAR alignment
@@ -245,6 +310,28 @@ else:
 STAR_EXTRA = " ".join(args)
 
 
+### RSEM STRANDEDNESS HELPER
+
+_rsem_user_tokens = str(config.get("rsem_quant_params", "")).split()
+if "--strandedness" in _rsem_user_tokens or "--forward-prob" in _rsem_user_tokens:
+    RSEM_QUANT_EXTRA = str(config.get("rsem_quant_params", ""))
+else:
+    if config["strandedness"] == "reverse":
+        _rsem_strand_flag = "--strandedness reverse"
+    elif config["strandedness"] in ("yes", "forward"):
+        _rsem_strand_flag = "--strandedness forward"
+    else:
+        _rsem_strand_flag = "--strandedness none"
+    RSEM_QUANT_EXTRA = " ".join(
+        part
+        for part in [
+            _rsem_strand_flag,
+            str(config.get("rsem_quant_params", "")).strip(),
+        ]
+        if part
+    )
+
+
 ### HISAT2 STRANDEDNESS & INDEX BASE
 
 if config["strandedness"] == "no":
@@ -264,12 +351,31 @@ else:
     HISAT2_BASE = "{}/{}".format(INDEX_PATH, "hisat2_index")
 
 
-### BAM2EZBAKR PARAMETERS
+### BAM2EZBAKR & MUTATIONAL ANOMALY (SNP) PARAMETERS
 
 CTL_NAMES = list(config["control_samples"])
 s4U_SAMPS = list(set(SAMP_NAMES) - set(CTL_NAMES))
 nctl = len(CTL_NAMES)
 nsamps = len(SAMP_NAMES)
+
+if nctl > 0:
+    SNP_SAMP_NAMES = CTL_NAMES
+    SNP_MIN_DEPTH = config["snp_min_depth"]
+    SNP_MIN_FREQ = config["snp_min_freq"]
+    SNP_ERR_RATE = config["snp_err_rate"]
+elif config.get("call_snps_without_ctl", False):
+    SNP_SAMP_NAMES = SAMP_NAMES
+    SNP_MIN_DEPTH = config["snp_noctl_min_depth"]
+    SNP_MIN_FREQ = config["snp_noctl_min_freq"]
+    SNP_ERR_RATE = config["snp_noctl_err_rate"]
+else:
+    SNP_SAMP_NAMES = []
+    SNP_MIN_DEPTH = config["snp_min_depth"]
+    SNP_MIN_FREQ = config["snp_min_freq"]
+    SNP_ERR_RATE = config["snp_err_rate"]
+
+SNP_BAMS = expand("results/coord_bam/{s}.bam", s=SNP_SAMP_NAMES)
+SNP_BAIS = expand("results/coord_bam/{s}.bam.bai", s=SNP_SAMP_NAMES)
 
 
 def get_index_name():
@@ -283,6 +389,30 @@ NORMALIZE = config["normalize"]
 
 def get_input_bams(wildcards):
     return config["samples"][wildcards.sample]
+
+
+### TEC MODE HELPER
+
+_raw_tec_mode = str(config.get("tec_mode", "auto")).strip().lower()
+if _raw_tec_mode not in ("auto", "transcriptome", "genome"):
+    raise ValueError(
+        f"Unsupported tec_mode '{config.get('tec_mode')}'. Expected 'auto', 'transcriptome', or 'genome'."
+    )
+if _raw_tec_mode == "auto":
+    TEC_MODE = (
+        "transcriptome"
+        if (config["aligner"] == "star" and not config["bam2bakr"])
+        else "genome"
+    )
+elif _raw_tec_mode == "transcriptome":
+    if config["aligner"] != "star" or config["bam2bakr"]:
+        raise ValueError(
+            "tec_mode='transcriptome' requires aligner='star' with FASTQ input (bam2bakr=False). "
+            "Use tec_mode='auto' or tec_mode='genome'."
+        )
+    TEC_MODE = "transcriptome"
+else:
+    TEC_MODE = "genome"
 
 
 ### TRACK NORMALIZATION HELPERS
@@ -479,4 +609,8 @@ MULTIQC_INPUT = expand(
 if config.get("aligner") == "star":
     MULTIQC_INPUT.append(
         expand("results/align/{sample}-Log.final.out", sample=SAMP_NAMES)
+    )
+elif config.get("aligner") == "hisat3n":
+    MULTIQC_INPUT.append(
+        expand("results/align/{sample}_summary.txt", sample=SAMP_NAMES)
     )

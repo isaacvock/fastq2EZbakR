@@ -90,37 +90,73 @@ rule featurecounts_exonbins:
         "v7.2.0/bio/subread/featurecounts"
 
 
-if config.get("run_rsem", True):
+if TEC_MODE == "transcriptome":
+    if config.get("run_rsem", True):
 
-    # Get the set of isoforms a read maps to from the RSEM transcriptome bam
-    rule read_to_transcripts:
-        input:
-            bam="results/rsem/{sample}.transcript.bam",
-        output:
-            table=temp("results/read_to_transcripts/{sample}.csv"),
-        log:
-            "logs/read_to_transcripts/{sample}.log",
-        conda:
-            "../envs/full.yaml"
-        threads: 4
-        script:
-            "../scripts/features/transcript_assignment.py"
+        # Get strand-compatible isoforms a read maps to from the RSEM transcriptome BAM
+        rule read_to_transcripts:
+            input:
+                bam="results/rsem/{sample}.transcript.bam",
+            output:
+                table=temp("results/read_to_transcripts/{sample}.csv"),
+            params:
+                strandedness=config["strandedness"],
+            log:
+                "logs/read_to_transcripts/{sample}.log",
+            conda:
+                "../envs/full.yaml"
+            threads: 4
+            script:
+                "../scripts/features/transcript_assignment.py"
+
+    else:
+
+        # Get strand-compatible isoforms a read maps to from the STAR transcriptome BAM
+        rule read_to_transcripts:
+            input:
+                bam="results/align/{sample}-Aligned.toTranscriptome.out.bam",
+            output:
+                table=temp("results/read_to_transcripts/{sample}.csv"),
+            params:
+                strandedness=config["strandedness"],
+            log:
+                "logs/read_to_transcripts/{sample}.log",
+            conda:
+                "../envs/full.yaml"
+            threads: 4
+            script:
+                "../scripts/features/transcript_assignment.py"
 
 else:
 
-    # Get the set of isoforms a read maps to from the STAR transcriptome bam
+    # Aligner-agnostic genome-BAM TEC assignment (HISAT-3N, HISAT2, bam2bakr, or tec_mode='genome')
     rule read_to_transcripts:
         input:
-            bam="results/align/{sample}-Aligned.toTranscriptome.out.bam",
+            bam="results/sf_reads/{sample}.s.bam",
+            gtf=config["annotation"],
         output:
             table=temp("results/read_to_transcripts/{sample}.csv"),
+        params:
+            pythonscript=workflow.source_path(
+                "../scripts/features/genome_tec_assignment.py"
+            ),
+            strandedness=config["strandedness"],
+            end_overhang=config.get("tec_end_overhang", 2),
         log:
             "logs/read_to_transcripts/{sample}.log",
         conda:
             "../envs/full.yaml"
-        threads: 4
-        script:
-            "../scripts/features/transcript_assignment.py"
+        threads: 8
+        shell:
+            """
+            python {params.pythonscript:q} \
+                -b {input.bam:q} \
+                -g {input.gtf:q} \
+                -o {output.table:q} \
+                -s {params.strandedness:q} \
+                -t {threads} \
+                --end-overhang {params.end_overhang} 1> {log:q} 2>&1
+            """
 
 
 # Get deduplicated set of junctions each read/pair overlaps directly via pysam

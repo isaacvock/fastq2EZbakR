@@ -17,6 +17,12 @@ container: "docker://docker.io/isaacvock/snakeverse-base:0.1.0"
 
 ##### Impute potentially missing config parameters for backwards compatibility #####
 
+config["aligner"] = str(config.get("aligner", "star")).strip().lower().replace("-", "")
+if config["aligner"] not in ("star", "hisat2", "hisat3n"):
+    raise ValueError(
+        f"Unsupported aligner '{config.get('aligner')}'. Expected 'star', 'hisat2', or 'hisat3n'."
+    )
+
 if config.get("lowRAM", False):
     logger.warning(
         "config['lowRAM'] is deprecated and ignored; merge_features_and_muts now streams via DuckDB."
@@ -48,17 +54,49 @@ if "tec" not in config["features"]:
 if "transcripts" not in config["features"]:
     config["features"]["transcripts"] = False
 
+if "tec_mode" not in config:
+    config["tec_mode"] = "auto"
+
+if "tec_end_overhang" not in config:
+    config["tec_end_overhang"] = 2
+
 if "fc_transcripts_extra" not in config:
     config["fc_transcripts_extra"] = ""
 
 if "final_output" not in config:
     config["final_output"] = {"cB": True, "cUP": False, "arrow": False}
 
-if "bcftools_call_params" not in config:
-    config["bcftools_call_params"] = ""
+if config.get("bcftools_mpileup_params", "") or config.get("bcftools_call_params", ""):
+    logger.warning(
+        "bcftools_mpileup_params and bcftools_call_params are deprecated; "
+        "call_snps now uses samtools mpileup + call_snps.py (configure snp_mpileup_params and snp_* cutoffs)."
+    )
 
-if "bcftools_mpileup_params" not in config:
-    config["bcftools_mpileup_params"] = ""
+for _snp_key, _snp_default in (
+    ("call_snps_without_ctl", False),
+    ("snp_min_depth", 5),
+    ("snp_min_alt", 3),
+    ("snp_min_freq", 0.25),
+    ("snp_err_rate", 0.002),
+    ("snp_p_cutoff", 1.0e-4),
+    ("snp_noctl_min_depth", 20),
+    ("snp_noctl_min_freq", 0.35),
+    ("snp_noctl_err_rate", 0.10),
+    ("snp_mpileup_params", ""),
+):
+    if _snp_key not in config:
+        config[_snp_key] = _snp_default
+
+for _h3n_key, _h3n_default in (
+    ("hisat3n_index_params", ""),
+    ("hisat3n_align_params", "--no-softclip"),
+    ("hisat3n_index_base", ""),
+    ("hisat3n_base_change", ""),
+    ("hisat3n_repeat_index", False),
+    ("hisat3n_directional", True),
+):
+    if _h3n_key not in config:
+        config[_h3n_key] = _h3n_default
 
 
 ##### setup report #####
@@ -84,7 +122,10 @@ if not config["bam2bakr"]:
 
     include: "rules/preprocess.smk"
     include: "rules/alignment.smk"
-    include: "rules/rsem.smk"
+
+    if config["aligner"] == "star":
+
+        include: "rules/rsem.smk"
     include: "rules/multiQC.smk"
 
 

@@ -41,8 +41,8 @@ rule RSEM:
     params:
         # optional, specify if sequencing is paired-end
         paired_end=config["PE"],
-        # additional optional parameters to pass to rsem, for example,
-        extra=config["rsem_quant_params"],
+        # includes automatic --strandedness mapping unless overridden in rsem_quant_params
+        extra=RSEM_QUANT_EXTRA,
     log:
         "logs/RSEM/{sample}.log",
     conda:

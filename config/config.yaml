@@ -5,7 +5,7 @@
 # for all tools that fastq2EZbakR makes use of.
 #
 # File paths can either be absolute (e.g., ~/path/to/file/or/directory) or relative
-# to the directory in which you are calling the pipeline from (e.g., data/fastq/WT_1 in the 
+# to the directory in which you are calling the pipeline from (e.g., data/fastq/WT_1 in the
 # example samples entry means to look in the data directory present in the directory
 # where you called `snakemake` to run the pipeline).
 #
@@ -55,7 +55,7 @@ samples:
 # -s4U control sample IDs
 control_samples: ['WT_ctl', 'KO_ctl']
 
-# Paired end? 
+# Paired end?
   # Set to True or False, no double quotes
 PE: True
 
@@ -67,21 +67,22 @@ genome: data/genome/genome.fasta
 annotation: data/annotation/genome.gtf
 
 
-# Which aligner to use? 
+# Which aligner to use?
   # Options are:
     # 1) star
     # 2) hisat2
+    # 3) hisat3n (or "hisat-3n"; 3-nucleotide conversion-aware aligner; does not run RSEM)
 aligner: "star"
 
 
 # Path to directory containing indices
   # Indices will be built automatically if not present
   # I would suggest naming this "aligner"_index, though any
-  # directory path name will do (avoid results/...; the 
+  # directory path name will do (avoid results/...; the
   # results/ directory is where the pipeline output will be created,
   # so probably better to avoid specifying a path there that might
   # clash with the names of one of the other automatically created
-  # directories). 
+  # directories).
   # If you aren't providing this, directory must not exist at the time
   # you launch the pipeline with `snakemake ...`, or else Snakemake won't
   # know to create it.
@@ -94,25 +95,23 @@ indices: data/indices/star_index
   # reverse means that read 2 represents 5' to 3' sequence of original RNA (read 1 thus represents its reverse complement)
   # yes means that read 1 represents 5' to 3' sequence of original RNA
   # no means unstranded
-  # Used by featureCounts, though terminology comes from HTSeq
+  # Used by featureCounts, RSEM, HISAT2/HISAT-3N, mutation calling, and TEC assignment
 strandedness: "reverse"
 
 
 # Features to assign reads to
   # genes = anywhere in an annotated gene body
   # exons = in exclusively exonic regions of a gene
-  # tec = set of transcripts with which read overlaps; TEC = transcript equivalence class
+  # tec = strand- and splice-compatible set of transcripts with which read overlaps;
+    # TEC = transcript equivalence class (works with STAR, HISAT-3N, HISAT2, and BAM input)
   # exonic_bins = exonic regions as defined in DEXSeq paper (Anders et al., 2012)
-  # junctions = exon-exon junctions. Only compatible with STAR-based alignment
-    # as STAR's unique jI and jM bam file tags are required
+  # junctions = spliced exon-exon junctions (uses STAR jI/jM tags when present,
+    # or exact CIGAR-N intron coordinates for HISAT-3N, HISAT2, and external BAMs)
   # threeputr = 3'-UTRs. Should only be used with 3'-end sequencing data.
     # This option is paired with `call_threeputrs` which determines whether or not
     # 3' UTRs are called de novo using your data or annotated from your provided GTF
-  # eej = exon-exon junctions. Less accurate than junctions but compatible with any
-    # bam file. A new GTF file will be created with annotation for the junction_IDs
-    # that will show up in the final cB
-  # eij = exon-intron junctions. A new GTF file will be created with annotation for the junction_IDs
-    # that will show up in the final cB
+  # eej = exon-exon junctions via synthetic GTF + featureCounts
+  # eij = exon-intron junctions via synthetic GTF + featureCounts
 features:
     genes: True
     exons: True
@@ -126,6 +125,18 @@ features:
 
 
 ####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
+
+
+### Transcript Equivalence Class (TEC) assignment mode (only relevant if features.tec == True)
+  # "auto": uses strand-filtered STAR/RSEM transcriptome BAM when aligner == "star" and bam2bakr == False;
+  #         automatically uses annotation-based genome-BAM TEC assignment for hisat3n, hisat2, or bam2bakr == True.
+  # "transcriptome": force STAR/RSEM transcriptome BAM TEC assignment (requires aligner == "star" and FASTQ input)
+  # "genome": force aligner-agnostic genome-BAM TEC assignment against `annotation`
+tec_mode: "auto"
+
+# Permitted overhang (bp) at annotated transcript 5' and 3' ends in genome TEC mode
+# (internal splice sites always enforce 0 bp overhang)
+tec_end_overhang: 2
 
 
 ### Parameters that are only relevant if threeputr == True
@@ -147,7 +158,7 @@ only_annotated_threeputrs: True
 # in the first 10 downstream bases, in transcript orientation (possible internal priming).
 # Annotated sites are flagged but retained, including in annotated-only runs.
 # Suspicious unannotated sites are filtered. <=0 disables both criteria;
-# the exported false_polyA attribute is NA when assessment is disabled.
+# the exported false_polyA_ attribute is NA when assessment is disabled.
 false_polyA_len: 7
 
 # Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
@@ -175,7 +186,7 @@ coverage_cutoff: 25
 bedtools_cluster_distance: 100
 
 
-### Deeptools bamCoverge parameters
+### Deeptools bamCoverage parameters
 deeptools_params: ""
 
 
@@ -186,7 +197,7 @@ deeptools_params: ""
   #         around 100x smaller), and is still compatible with EZbakR. Downside is the slight information loss that
   #         this compression leads to.
   # arrow = Partitioned database of parquet files, in the format necessary to pass to EZbakR.
-  # 
+  #
   # At least one of these should be set to True.
 final_output:
   cB: True
@@ -224,7 +235,7 @@ use_exons_only: True
 
 ### Miscellaneous parameters
 
-# Skip adapter trimming? 
+# Skip adapter trimming?
   # If True, will skip fastp step.
   # NOTE: Mutation calling intentionally does NOT mask mutations near read ends (minDist),
   # because masking mutations without masking reference bases deflates mutation rates.
@@ -233,7 +244,7 @@ use_exons_only: True
 skip_trimming: False
 
 
-# Path to flattened annotation 
+# Path to flattened annotation
   # Will be created if not already present
   # Only relevant if assigning reads to exonic_bins
 flat_annotation: "data/annotation/flat.gtf"
@@ -241,8 +252,9 @@ flat_annotation: "data/annotation/flat.gtf"
 
 # Minimum base quality required to call a mutation
 # NOTE: due to a legacy ASCII parsing quirk, the actual Phred score
-# minimum is `minqual` - 33. So if you set `minqual: 62`, the minimum
-# Phred score allowed for counting a base call as a mutation is 30 (`minqual` is a non-inclusive minimum). 
+# minimum is `minqual` - 33 (non-inclusive; i.e., Phred >= `minqual` - 32).
+# So if you set `minqual: 62`, the minimum Phred score allowed for counting a base call
+# as a mutation (and for mpileup anomaly calling) is 30.
 minqual: 62
 
 
@@ -270,23 +282,20 @@ run_rsem: True
 
 ##### FEATURECOUNTS PARAMETERS #####
 # Parameters automatically specified:
-  # Genes: -R -f -g gene_id -t transcript
-  # Exons: -R -g gene_id -J
-  # Transcripts: -R -f -g transcript_id -t exon -O
-  # Exonbins: -R -f -g exon_id -t exonic_part -O
+  # Genes: -R CORE -g gene_id -t transcript
+  # Exons: -R CORE -g gene_id -J
+  # Transcripts: -R CORE -g transcript_id -t exon -O
+  # Exonbins: -R CORE -f -g exon_id -t exonic_part -O
 # If PE = True, then "-p --countReadPairs" is also automatically set
 #
 # !!DO NOT REDUNDANTLY SPECIFY AUTOMATICALLY SPECIFIED PARAMETERS!!
 # Defaults suggested:
-# 1) Set -M for all cases. Non-primary multi-mapping reads are filtered
-# prior to running featureCounts, so we want to count all reads. There
-# seems to be a bug in featureCounts that can cause some primary, multi-mapping
-# reads getting unassigned. Setting -M avoids this problem.
-# 2) Set --nonOverlap to 0 for exon assignment. This is the key to exonic assignment,
-# ensuring that reads overlapping any non-exonic region are unassigned to tne xonic feature (XF).
-# Unfortunately, soft-clipping counts as non-assignment, so it is best to either turn off soft-clipping
-# in your aligner (which is done in the defaults for STAR and HISAT2 below) or increase the 
-# nonOverlap parameter to allow some leniency
+# 1) Set -M for multi-feature overlap cases. Non-primary multi-mapping reads are filtered
+# prior to running featureCounts, so we want to count all reads.
+# 2) Set --nonOverlap to 0 for exon assignment. This ensures that reads overlapping any
+# non-exonic region are unassigned to the exonic feature (XF).
+# Soft-clipping counts as non-assignment, so it is best to turn off soft-clipping in your
+# aligner (done in the defaults for STAR, HISAT2, and HISAT-3N below) or increase nonOverlap.
 
 # Parameters for assignment of reads to genes
 fc_genes_extra: "--nonOverlap 0"
@@ -310,15 +319,15 @@ fc_eij_extra: "-M"
 ##### FASTP PARAMETERS #####
   # See https://github.com/OpenGene/fastp for details
 
-# Adapters to pass to fastp 
+# Adapters to pass to fastp
   # Not strictly necessary as fastp can autodetect adapters. Autodetection is more accurate for paired-end data though.
-  # For paired-end data with widely used Illumina TruSeq adapters, this could be: 
+  # For paired-end data with widely used Illumina TruSeq adapters, this could be:
   # "--adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
 fastp_adapters: ""
 
 
 # Optional parameters to set for fastp
-fastp_parameters: "" 
+fastp_parameters: ""
 
 
 ##### FASTQC PARAMETERS #####
@@ -349,13 +358,30 @@ star_align_params: "--alignEndsType EndToEnd --outFilterType BySJout --outFilter
 
 
 
-##### BCFTOOLS PARAMETERS #####
+##### MUTATIONAL ANOMALY / SNP CALLING PARAMETERS #####
+  # Lightweight parallel `samtools mpileup` + exact binomial & allele-frequency anomaly caller.
+  # Flagged sites are excluded from BOTH mutation counts and reference nucleotide denominators.
 
-# Optional parameters to pass to `bcftools mpileup`
-bcftools_mpileup_params: ""
+# Standard cutoffs when -s4U `control_samples` are provided (evaluated both per-control and pooled):
+snp_min_depth: 5
+snp_min_alt: 3
+snp_min_freq: 0.25
+snp_err_rate: 0.002
+snp_p_cutoff: 1.0e-4
 
-# Optional parameters to pass to `bcftools call`
-bcftools_call_params: ""
+# Opt-in fallback when `control_samples: []` (no -s4U controls available):
+  # If True, pools all +s4U samples with conservative depth, frequency, and null-rate cutoffs
+  # so true heterozygous/homozygous SNPs and RNA-editing sites are masked without censoring
+  # heavily labeled nascent RNA reads.
+call_snps_without_ctl: False
+snp_noctl_min_depth: 20
+snp_noctl_min_freq: 0.35
+snp_noctl_err_rate: 0.10
+
+# Optional extra arguments passed directly to `samtools mpileup`
+snp_mpileup_params: ""
+
+
 
 ##### HISAT2 PARAMETERS #####
 
@@ -363,15 +389,46 @@ bcftools_call_params: ""
 hisat2_index_params: ""
 
 
-# Optional parmaeters to set for hisat2 alignment
-  # NOTE: --rna-strandedness is automatically set based on required strandedness parameter
-    # DON'T REDUNDANTLY SPECIFY --rna-strandedness HERE!!
+# Optional parameters to set for hisat2 alignment
+  # NOTE: --rna-strandness is automatically set based on required strandedness parameter
+    # DON'T REDUNDANTLY SPECIFY --rna-strandness HERE!!
   # We suggest turning off soft-clipping to improve assignment of reads to exons
 hisat2_align_params: "--no-softclip"
 
 
 # Index base name. If not specified, defaults to "hisat2_index"
 hisat2_index_base: ""
+
+
+
+##### HISAT-3N PARAMETERS #####
+  # Only relevant if aligner == "hisat3n" (or "hisat-3n").
+  # NOTE: RSEM is not run when aligner == "hisat3n"; `features.tec` and `features.junctions`
+  # remain fully supported via genome-BAM TEC assignment and CIGAR-N junction extraction.
+
+# Optional parameters to set for `hisat-3n-build`
+hisat3n_index_params: ""
+
+# Build a repeat index (`--repeat-index`) during `hisat-3n-build`?
+  # WARNING: `--repeat-index` can require 64-128+ GB RAM on mammalian genomes, whereas
+  # the standard 3N index (False) uses ~8-16 GB RAM.
+hisat3n_repeat_index: False
+
+# Base conversion passed to `--base-change <from,to>` in `hisat-3n-build` and `hisat-3n`.
+  # If left empty (""), automatically derived from the first entry of `mut_tracks`
+  # (e.g., mut_tracks: "TC" -> "T,C").
+hisat3n_base_change: ""
+
+# Automatically enable `--directional-mapping` / `--directional-mapping-reverse` when strandedness != "no"?
+hisat3n_directional: True
+
+# Optional parameters to set for `hisat-3n` alignment
+  # NOTE: --rna-strandness and --directional-mapping* are automatically set from `strandedness`
+  # unless overridden here, and `--known-splicesite-infile` is automatically supplied from `annotation`.
+hisat3n_align_params: "--no-softclip"
+
+# Index base name inside `indices` directory. If empty, auto-detected or defaults to "hisat3n_index"
+hisat3n_index_base: ""
 
 
 
@@ -382,12 +439,14 @@ rsem_index_params: ""
 
 
 # Optional parameters to set for RSEM quantification
+  # NOTE: `--strandedness <reverse|forward|none>` is now automatically passed based on `strandedness`
+  # unless `--strandedness` or `--forward-prob` is explicitly specified here.
 rsem_quant_params: ""
 
 
 ##### FASTERQDUMP PARAMETERS ######
 
-# Optional parameters to pass to fasterq_dump if sra_download = True
+# Optional parameters to pass to fasterq_dump if download_fastqs == True
 fasterq_dump_extras: "--skip-technical"
 
 
@@ -422,70 +481,8 @@ multiqc_extra: ""
 ##############################
 # These currently do nothing, but might come back in future releases
 
-# Add a full-gene "transcript" to annotation used for STAR + RSEM to quantify pre-mRNA.
-  # This is a nice way to "regress out" pre-mRNA abundance and to identify
-  # problematic gene annotations (e.g., regions where estimated pre-mRNA abundance
-  # is as high if not higher than appreciably expressed isoforms).
-  #
-  # The annotation with the full-gene "transcript" will only be used for STAR's alignment
-  # and RSEM quantification. The full-gene transcript will not be a feature to which
-  # reads are assigned by featureCounts.
-  # 
-  # This will only have an impact if config["aligner"] is set to "star".
 quantify_premRNA: False
-  # Defunct as this currently has no impact on RSEM quantification
-
-
-# Are there jI, jM, XF, GF, or EF tags in provided bam files?
-  # These will break HTSeq or lead to unexpected behavior and will
-  # thus be removed prior to running HTSeq.
-  # NOTE: these tags will not be removed from the input bam files,
-  # just from processed bam files generated by fastq2EZbakR
 remove_tags: False
-  # Defunct as HTSeq is no longer used and these tags cause no problems
-  # to pipeline.
-
-##### SALMON PARAMETERS #####
-# NOT YET IMPLEMENTED
-
-# Use Salmon for quantification?
-use_salmon: False
-
-# Path to directory containing Salmon indices
-  # Created automatically if not already present
-salmon_indices: "indices/salmon/"
-
-# Determing if and how to make decoy-aware index for salmon
-  # If make_decoy True, then a decoy-aware index will be made. WARNING: WILL REQUIRE LOTS OF RAM!! >100GB FOR HUMAN GENOME!!
-  # There are two options for how to make this index (see Salmon docs for details: https://salmon.readthedocs.io/en/latest/salmon.html)
-    # If entire_genome is True, then entire genome will be used. This provides a more comprehensive set of decoys at the cost of
-    # requiring more RAM and time to build the index.
-    # 
-    # If entire_genome if False, then "a set of decoy sequences will be identified
-    # by mapping annotated transcripts you wish to index against a hard-masked version
-    # of the organism's genome." (quoted from documentation linked above). This leads to 
-    # comparable performance as a whole genome decoy but is much less RAM intensive.
-decoy_settings:
-  make_decoy: True
-  entire_genome: False
-
-# Optional parameters for generateDecoyTranscriptome.sh script
-salmon_generateDecoy_params: ""
-
-# Read directionality
-directionality: "I"
-
-# Optional parameters for gffread (transcriptome fasta creation)
-gffread_extra: ""
-
-# Optional parameters for Salmon indexing
-salmon_index_params: ""
-
-# Optional parameters for Salmon quantification
-salmon_quant_params: ""
-
-
-
 
 
 ##### LINKS TO SNAKEMAKE WRAPPERS USED #####

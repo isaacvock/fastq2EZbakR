@@ -149,30 +149,69 @@ rule genome_index:
         "../scripts/bam2bakR/genome-faidx.py"
 
 
-# Identify SNPs to be accounted for when counting mutations
-rule call_snps:
-    input:
-        fasta=str(config["genome"]),
-        fai=get_index_name(),
-        bams=expand("results/coord_bam/{ctl}.bam", ctl=CTL_NAMES),
-        bais=expand("results/coord_bam/{ctl}.bam.bai", ctl=CTL_NAMES),
-    params:
-        nctl=nctl,
-        shellscript=workflow.source_path("../scripts/bam2bakR/call_snps.sh"),
-        call_params=config.get("bcftools_call_params", ""),
-        mpileup_params=config.get("bcftools_mpileup_params", ""),
-    output:
-        txt="results/snps/snp.txt",
-        vcf="results/snps/snp.vcf",
-    log:
-        "logs/call_snps/ctl_samps.log",
-    threads: 20
-    conda:
-        "../envs/full.yaml"
-    shell:
-        """
-        bash {params.shellscript:q} {threads} {params.nctl} {output.txt:q} {output.vcf:q} "{params.mpileup_params}" "{params.call_params}" {input.fasta:q} {input.fai:q} {input.bams:q} 1> {log:q} 2>&1
-        """
+# Identify mutational anomalies / SNPs to mask when counting mutations
+if SNP_BAMS:
+
+    rule call_snps:
+        input:
+            fasta=str(config["genome"]),
+            fai=get_index_name(),
+            bams=SNP_BAMS,
+            bais=SNP_BAIS,
+        params:
+            pythonscript=workflow.source_path("../scripts/bam2bakR/call_snps.py"),
+            minqual=config["minqual"],
+            min_depth=SNP_MIN_DEPTH,
+            min_alt=config["snp_min_alt"],
+            min_freq=SNP_MIN_FREQ,
+            err_rate=SNP_ERR_RATE,
+            p_cutoff=config["snp_p_cutoff"],
+            mpileup_extra=config.get("snp_mpileup_params", ""),
+        output:
+            txt="results/snps/snp.txt",
+            tsv="results/snps/snp_counts.tsv",
+        log:
+            "logs/call_snps/ctl_samps.log",
+        threads: 20
+        conda:
+            "../envs/full.yaml"
+        shell:
+            """
+            python {params.pythonscript:q} \
+                --bam {input.bams:q} \
+                --fasta {input.fasta:q} \
+                --fai {input.fai:q} \
+                --output-txt {output.txt:q} \
+                --output-tsv {output.tsv:q} \
+                --threads {threads} \
+                --min-qual {params.minqual} \
+                --min-depth {params.min_depth} \
+                --min-alt {params.min_alt} \
+                --min-freq {params.min_freq} \
+                --err-rate {params.err_rate} \
+                --p-cutoff {params.p_cutoff} \
+                --mpileup-extra {params.mpileup_extra:q} 1> {log:q} 2>&1
+            """
+
+else:
+
+    rule call_snps:
+        params:
+            pythonscript=workflow.source_path("../scripts/bam2bakR/call_snps.py"),
+        output:
+            txt="results/snps/snp.txt",
+            tsv="results/snps/snp_counts.tsv",
+        log:
+            "logs/call_snps/ctl_samps.log",
+        threads: 1
+        conda:
+            "../envs/full.yaml"
+        shell:
+            """
+            python {params.pythonscript:q} \
+                --output-txt {output.txt:q} \
+                --output-tsv {output.tsv:q} 1> {log:q} 2>&1
+            """
 
 
 # Count mutations directly via parallel BGZF virtual-offset streaming

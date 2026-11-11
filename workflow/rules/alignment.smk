@@ -192,3 +192,179 @@ if config["aligner"] == "hisat2":
         threads: 20
         wrapper:
             "v2.6.0/bio/hisat2/align"
+
+
+######################################################################################
+##### ALIGNMENT WITH HISAT-3N
+######################################################################################
+
+
+if config["aligner"] == "hisat3n":
+    if make_index:
+
+        # Build standard (or optional repeat) 3N index with hisat-3n-build
+        rule index:
+            input:
+                fasta=config["genome"],
+            output:
+                outdir=directory(config["indices"]),
+            params:
+                prefix=HISAT3N_BASE,
+                base_change=HISAT3N_BASE_CHANGE,
+                repeat_flag=HISAT3N_REPEAT_FLAG,
+                extra=config["hisat3n_index_params"],
+            log:
+                "logs/index/hisat3n_index.log",
+            conda:
+                "../envs/hisat3n.yaml"
+            threads: 20
+            shell:
+                """
+                mkdir -p {output.outdir:q}
+                hisat-3n-build --base-change {params.base_change:q} {params.repeat_flag} -p {threads} {params.extra} {input.fasta:q} {params.prefix:q} 1> {log:q} 2>&1
+                """
+
+    if config["annotation"]:
+
+        # Extract known splice sites for alignment-time --known-splicesite-infile
+        rule get_ss:
+            input:
+                annotation=config["annotation"],
+            output:
+                "results/get_ss/splice_sites.ss",
+            log:
+                "logs/get_ss/ss.log",
+            conda:
+                "../envs/hisat3n.yaml"
+            threads: 1
+            shell:
+                "hisat2_extract_splice_sites.py {input.annotation:q} 1> {output:q} 2> {log:q}"
+
+        if config["PE"]:
+
+            rule align:
+                input:
+                    fq1=get_fastq_r1,
+                    fq2=get_fastq_r2,
+                    idx=config["indices"],
+                    ss="results/get_ss/splice_sites.ss",
+                output:
+                    aln="results/align/{sample}.bam",
+                    summary="results/align/{sample}_summary.txt",
+                log:
+                    "logs/align/{sample}_hisat3n.log",
+                params:
+                    prefix=HISAT3N_BASE,
+                    base_change=HISAT3N_BASE_CHANGE,
+                    extra=HISAT3N_ALIGN_EXTRA,
+                conda:
+                    "../envs/hisat3n.yaml"
+                threads: 20
+                shell:
+                    """
+                    hisat-3n --index {params.prefix:q} \
+                        -p {threads} \
+                        -q \
+                        -1 {input.fq1:q} \
+                        -2 {input.fq2:q} \
+                        --base-change {params.base_change:q} \
+                        --known-splicesite-infile {input.ss:q} \
+                        --new-summary --summary-file {output.summary:q} \
+                        {params.extra} 2> {log:q} \
+                    | samtools view -@ {threads} -b -o {output.aln:q} - 2>> {log:q}
+                    """
+
+        else:
+
+            rule align:
+                input:
+                    fq1=get_fastq_r1,
+                    idx=config["indices"],
+                    ss="results/get_ss/splice_sites.ss",
+                output:
+                    aln="results/align/{sample}.bam",
+                    summary="results/align/{sample}_summary.txt",
+                log:
+                    "logs/align/{sample}_hisat3n.log",
+                params:
+                    prefix=HISAT3N_BASE,
+                    base_change=HISAT3N_BASE_CHANGE,
+                    extra=HISAT3N_ALIGN_EXTRA,
+                conda:
+                    "../envs/hisat3n.yaml"
+                threads: 20
+                shell:
+                    """
+                    hisat-3n --index {params.prefix:q} \
+                        -p {threads} \
+                        -q \
+                        -U {input.fq1:q} \
+                        --base-change {params.base_change:q} \
+                        --known-splicesite-infile {input.ss:q} \
+                        --new-summary --summary-file {output.summary:q} \
+                        {params.extra} 2> {log:q} \
+                    | samtools view -@ {threads} -b -o {output.aln:q} - 2>> {log:q}
+                    """
+
+    else:
+        if config["PE"]:
+
+            rule align:
+                input:
+                    fq1=get_fastq_r1,
+                    fq2=get_fastq_r2,
+                    idx=config["indices"],
+                output:
+                    aln="results/align/{sample}.bam",
+                    summary="results/align/{sample}_summary.txt",
+                log:
+                    "logs/align/{sample}_hisat3n.log",
+                params:
+                    prefix=HISAT3N_BASE,
+                    base_change=HISAT3N_BASE_CHANGE,
+                    extra=HISAT3N_ALIGN_EXTRA,
+                conda:
+                    "../envs/hisat3n.yaml"
+                threads: 20
+                shell:
+                    """
+                    hisat-3n --index {params.prefix:q} \
+                        -p {threads} \
+                        -q \
+                        -1 {input.fq1:q} \
+                        -2 {input.fq2:q} \
+                        --base-change {params.base_change:q} \
+                        --new-summary --summary-file {output.summary:q} \
+                        {params.extra} 2> {log:q} \
+                    | samtools view -@ {threads} -b -o {output.aln:q} - 2>> {log:q}
+                    """
+
+        else:
+
+            rule align:
+                input:
+                    fq1=get_fastq_r1,
+                    idx=config["indices"],
+                output:
+                    aln="results/align/{sample}.bam",
+                    summary="results/align/{sample}_summary.txt",
+                log:
+                    "logs/align/{sample}_hisat3n.log",
+                params:
+                    prefix=HISAT3N_BASE,
+                    base_change=HISAT3N_BASE_CHANGE,
+                    extra=HISAT3N_ALIGN_EXTRA,
+                conda:
+                    "../envs/hisat3n.yaml"
+                threads: 20
+                shell:
+                    """
+                    hisat-3n --index {params.prefix:q} \
+                        -p {threads} \
+                        -q \
+                        -U {input.fq1:q} \
+                        --base-change {params.base_change:q} \
+                        --new-summary --summary-file {output.summary:q} \
+                        {params.extra} 2> {log:q} \
+                    | samtools view -@ {threads} -b -o {output.aln:q} - 2>> {log:q}
+                    """

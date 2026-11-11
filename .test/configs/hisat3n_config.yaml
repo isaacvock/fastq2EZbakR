@@ -1,0 +1,69 @@
+samples:
+    WT_1: data/WT1
+    WT_2: data/WT2
+    WT_ctl: data/WTctl
+
+control_samples: ['WT_ctl']
+PE: True
+genome: data/genome/genome.fasta
+annotation: data/annotation/genome.gtf
+
+aligner: "hisat-3n"
+indices: hisat3n_index
+strandedness: "reverse"
+
+features:
+    genes: True
+    exons: True
+    tec: True
+    exonic_bins: False
+    junctions: True
+    threeputr: False
+    eej: False
+    eij: False
+
+final_output:
+    cB: True
+    cUP: False
+    arrow: True
+
+mut_tracks: "TC"
+max_merge_mem: "8G"
+normalize: True
+spikename: "\"\""
+use_exons_only: True
+skip_trimming: False
+flat_annotation: "data/annotation/flat.gtf"
+minqual: 62
+WSL: False
+mutpos: False
+make_tracks: True
+run_rsem: True
+
+fc_genes_extra: "--nonOverlap 0"
+fc_exons_extra: "--nonOverlap 0"
+fc_transcripts_extra: "-M"
+fc_exonbins_extra: "-M"
+fc_eej_extra: "-M"
+fc_eij_extra: "-M"
+
+fastp_adapters: ""
+fastp_parameters: ""
+fastqc_params: ""
+star_index_params: ""
+star_sam_tags: ["NH", "HI", "AS", "NM", "MD", "nM"]
+star_align_params: "--alignEndsType EndToEnd"
+hisat2_index_params: ""
+hisat2_align_params: "--no-softclip"
+hisat2_index_base: ""
+hisat3n_index_params: ""
+hisat3n_align_params: "--no-softclip"
+hisat3n_index_base: ""
+rsem_index_params: ""
+rsem_quant_params: ""
+fasterq_dump_extras: "--skip-technical"
+min_pos_coverage: 1
+max_pos_coverage: 10000000
+junction_annotation_params: ""
+multiqc_extra: ""
+deeptools_params: ""
