@@ -1,5 +1,6 @@
 import glob
 import os
+import shlex
 
 
 ### Figure out if bam files or fastq files are provided
@@ -376,6 +377,11 @@ else:
 
 SNP_BAMS = expand("results/coord_bam/{s}.bam", s=SNP_SAMP_NAMES)
 SNP_BAIS = expand("results/coord_bam/{s}.bam.bai", s=SNP_SAMP_NAMES)
+
+_snp_mpileup_raw = str(config.get("snp_mpileup_params", "") or "").strip()
+SNP_MPILEUP_EXTRA_ARG = (
+    f"--mpileup-extra={shlex.quote(_snp_mpileup_raw)}" if _snp_mpileup_raw else ""
+)
 
 
 def get_index_name():

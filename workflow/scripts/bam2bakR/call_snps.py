@@ -17,6 +17,7 @@ import os
 import shlex
 import subprocess
 import sys
+import tempfile
 
 import pysam
 
@@ -207,153 +208,157 @@ def _scan_region_worker(task):
         *bam_paths,
     ]
 
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="ascii",
-        errors="replace",
-        bufsize=1024 * 1024,
-    )
-
     snp_records = []
     expected_min_cols = 3 + 3 * n_bams
 
-    assert proc.stdout is not None
-    for line in proc.stdout:
-        fields = line.rstrip("\n").split("\t")
-        if len(fields) < expected_min_cols:
-            continue
-
-        ref = fields[2].upper()
-        if ref not in VALID_REFS:
-            continue
-
-        # Fast C-level scan per BAM column; skip immediately if zero mismatch bases exist
-        has_any_alt = False
-        per_bam = []
-        pooled_depth = 0
-        pooled_A = 0
-        pooled_C = 0
-        pooled_G = 0
-        pooled_T = 0
-
-        for i in range(n_bams):
-            raw_dp_str = fields[3 + 3 * i]
-            if raw_dp_str == "0":
-                if n_bams > 1:
-                    per_bam.append((0, 0, 0, 0, 0))
-                continue
-
-            bases = fields[4 + 3 * i]
-            n_ref = bases.count(".") + bases.count(",")
-            blen = len(bases)
-
-            if n_ref == blen:
-                pooled_depth += n_ref
-                if n_bams > 1:
-                    per_bam.append((n_ref, 0, 0, 0, 0))
-                continue
-
-            n_skip = (
-                bases.count(">")
-                + bases.count("<")
-                + bases.count("*")
-                + bases.count("N")
-                + bases.count("n")
-            )
-            if n_ref + n_skip == blen:
-                pooled_depth += n_ref
-                if n_bams > 1:
-                    per_bam.append((n_ref, 0, 0, 0, 0))
-                continue
-
-            a_cnt = bases.count("A") + bases.count("a")
-            c_cnt = bases.count("C") + bases.count("c")
-            g_cnt = bases.count("G") + bases.count("g")
-            t_cnt = bases.count("T") + bases.count("t")
-            dp_i = n_ref + a_cnt + c_cnt + g_cnt + t_cnt
-
-            pooled_depth += dp_i
-            if a_cnt or c_cnt or g_cnt or t_cnt:
-                has_any_alt = True
-                pooled_A += a_cnt
-                pooled_C += c_cnt
-                pooled_G += g_cnt
-                pooled_T += t_cnt
-
-            if n_bams > 1:
-                per_bam.append((dp_i, a_cnt, c_cnt, g_cnt, t_cnt))
-
-        if not has_any_alt or pooled_depth < min_depth:
-            continue
-
-        pos_int = int(fields[1])
-        rec_chrom = fields[0]
-        pooled_alts = (("A", pooled_A), ("C", pooled_C), ("G", pooled_G), ("T", pooled_T))
-
-        for alt_idx, (alt_base, p_alt) in enumerate(pooled_alts):
-            if alt_base == ref or p_alt < min_alt:
-                continue
-
-            passed = False
-            best_dp = pooled_depth
-            best_alt = p_alt
-            best_freq = p_alt / pooled_depth
-            best_pval = 1.0
-            best_source = "pooled" if n_bams > 1 else bam_labels[0]
-
-            # 1) Evaluate pooled counts across all input BAMs
-            if pooled_depth >= min_depth and p_alt >= min_alt and best_freq >= min_freq:
-                pval_pool = binom_upper_tail_pval(p_alt, pooled_depth, err_rate)
-                if pval_pool <= p_cutoff:
-                    passed = True
-                    best_pval = pval_pool
-
-            # 2) Evaluate each individual BAM when multiple BAMs are provided
-            if not passed and n_bams > 1:
-                alt_col = alt_idx + 1  # (dp_i, A, C, G, T)
-                for bam_idx, stats_i in enumerate(per_bam):
-                    dp_i = stats_i[0]
-                    if dp_i < min_depth:
-                        continue
-                    alt_i = stats_i[alt_col]
-                    if alt_i < min_alt:
-                        continue
-                    freq_i = alt_i / dp_i
-                    if freq_i < min_freq:
-                        continue
-                    pval_i = binom_upper_tail_pval(alt_i, dp_i, err_rate)
-                    if pval_i <= p_cutoff and (not passed or pval_i < best_pval):
-                        passed = True
-                        best_dp = dp_i
-                        best_alt = alt_i
-                        best_freq = freq_i
-                        best_pval = pval_i
-                        best_source = bam_labels[bam_idx]
-
-            if passed:
-                snp_records.append(
-                    (
-                        rec_chrom,
-                        pos_int,
-                        ref,
-                        alt_base,
-                        best_dp,
-                        best_alt,
-                        best_freq,
-                        best_pval,
-                        best_source,
-                    )
-                )
-
-    stderr_txt = proc.stderr.read() if proc.stderr is not None else ""
-    ret = proc.wait()
-    if ret != 0:
-        raise RuntimeError(
-            f"samtools mpileup failed on region {region_str} (exit {ret}): {stderr_txt.strip()}"
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as err_fh:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=err_fh,
+            text=True,
+            encoding="ascii",
+            errors="replace",
+            bufsize=1024 * 1024,
         )
+
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < expected_min_cols:
+                continue
+
+            ref = fields[2].upper()
+            if ref not in VALID_REFS:
+                continue
+
+            # Fast C-level scan per BAM column; skip immediately if zero mismatch bases exist
+            has_any_alt = False
+            per_bam = []
+            pooled_depth = 0
+            pooled_A = 0
+            pooled_C = 0
+            pooled_G = 0
+            pooled_T = 0
+
+            for i in range(n_bams):
+                raw_dp_str = fields[3 + 3 * i]
+                if raw_dp_str == "0":
+                    if n_bams > 1:
+                        per_bam.append((0, 0, 0, 0, 0))
+                    continue
+
+                bases = fields[4 + 3 * i]
+                n_ref = bases.count(".") + bases.count(",")
+                blen = len(bases)
+
+                if n_ref == blen:
+                    pooled_depth += n_ref
+                    if n_bams > 1:
+                        per_bam.append((n_ref, 0, 0, 0, 0))
+                    continue
+
+                n_skip = (
+                    bases.count(">")
+                    + bases.count("<")
+                    + bases.count("*")
+                    + bases.count("N")
+                    + bases.count("n")
+                )
+                if n_ref + n_skip == blen:
+                    pooled_depth += n_ref
+                    if n_bams > 1:
+                        per_bam.append((n_ref, 0, 0, 0, 0))
+                    continue
+
+                a_cnt = bases.count("A") + bases.count("a")
+                c_cnt = bases.count("C") + bases.count("c")
+                g_cnt = bases.count("G") + bases.count("g")
+                t_cnt = bases.count("T") + bases.count("t")
+                dp_i = n_ref + a_cnt + c_cnt + g_cnt + t_cnt
+
+                pooled_depth += dp_i
+                if a_cnt or c_cnt or g_cnt or t_cnt:
+                    has_any_alt = True
+                    pooled_A += a_cnt
+                    pooled_C += c_cnt
+                    pooled_G += g_cnt
+                    pooled_T += t_cnt
+
+                if n_bams > 1:
+                    per_bam.append((dp_i, a_cnt, c_cnt, g_cnt, t_cnt))
+
+            if not has_any_alt or pooled_depth < min_depth:
+                continue
+
+            pos_int = int(fields[1])
+            if pos_int < start or pos_int > end:
+                continue
+            rec_chrom = fields[0]
+            pooled_alts = (("A", pooled_A), ("C", pooled_C), ("G", pooled_G), ("T", pooled_T))
+
+            for alt_idx, (alt_base, p_alt) in enumerate(pooled_alts):
+                if alt_base == ref or p_alt < min_alt:
+                    continue
+
+                passed = False
+                best_dp = pooled_depth
+                best_alt = p_alt
+                best_freq = p_alt / pooled_depth
+                best_pval = 1.0
+                best_source = "pooled" if n_bams > 1 else bam_labels[0]
+
+                # 1) Evaluate pooled counts across all input BAMs
+                if pooled_depth >= min_depth and p_alt >= min_alt and best_freq >= min_freq:
+                    pval_pool = binom_upper_tail_pval(p_alt, pooled_depth, err_rate)
+                    if pval_pool <= p_cutoff:
+                        passed = True
+                        best_pval = pval_pool
+
+                # 2) Evaluate each individual BAM when multiple BAMs are provided
+                if not passed and n_bams > 1:
+                    alt_col = alt_idx + 1  # (dp_i, A, C, G, T)
+                    for bam_idx, stats_i in enumerate(per_bam):
+                        dp_i = stats_i[0]
+                        if dp_i < min_depth:
+                            continue
+                        alt_i = stats_i[alt_col]
+                        if alt_i < min_alt:
+                            continue
+                        freq_i = alt_i / dp_i
+                        if freq_i < min_freq:
+                            continue
+                        pval_i = binom_upper_tail_pval(alt_i, dp_i, err_rate)
+                        if pval_i <= p_cutoff and (not passed or pval_i < best_pval):
+                            passed = True
+                            best_dp = dp_i
+                            best_alt = alt_i
+                            best_freq = freq_i
+                            best_pval = pval_i
+                            best_source = bam_labels[bam_idx]
+
+                if passed:
+                    snp_records.append(
+                        (
+                            rec_chrom,
+                            pos_int,
+                            ref,
+                            alt_base,
+                            best_dp,
+                            best_alt,
+                            best_freq,
+                            best_pval,
+                            best_source,
+                        )
+                    )
+
+        ret = proc.wait()
+        if ret != 0:
+            err_fh.seek(0)
+            stderr_txt = err_fh.read()
+            raise RuntimeError(
+                f"samtools mpileup failed on region {region_str} (exit {ret}): {stderr_txt.strip()}"
+            )
 
     return snp_records
 
@@ -458,9 +463,11 @@ def parse_args():
     )
     parser.add_argument(
         "--mpileup-extra",
-        type=str,
+        nargs="?",
+        const="",
         default="",
-        help="Optional extra flags passed to samtools mpileup",
+        type=str,
+        help="Optional extra flags passed to samtools mpileup (use --mpileup-extra='...' if starting with '-')",
     )
     return parser.parse_args()
 

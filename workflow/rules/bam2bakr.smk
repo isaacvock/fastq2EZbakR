@@ -166,7 +166,7 @@ if SNP_BAMS:
             min_freq=SNP_MIN_FREQ,
             err_rate=SNP_ERR_RATE,
             p_cutoff=config["snp_p_cutoff"],
-            mpileup_extra=config.get("snp_mpileup_params", ""),
+            mpileup_extra_arg=SNP_MPILEUP_EXTRA_ARG,
         output:
             txt="results/snps/snp.txt",
             tsv="results/snps/snp_counts.tsv",
@@ -190,7 +190,7 @@ if SNP_BAMS:
                 --min-freq {params.min_freq} \
                 --err-rate {params.err_rate} \
                 --p-cutoff {params.p_cutoff} \
-                --mpileup-extra {params.mpileup_extra:q} 1> {log:q} 2>&1
+                {params.mpileup_extra_arg} 1> {log:q} 2>&1
             """
 
 else:
