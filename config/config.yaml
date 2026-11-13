@@ -126,70 +126,6 @@ features:
 
 ####### PARAMETERS THAT TUNE ASPECTS OF PIPELINE BEHAVIOR, BUT WITH LIKELY REASONABLE DEFAULTS #######
 
-
-### Transcript Equivalence Class (TEC) assignment mode (only relevant if features.tec == True)
-  # "auto": uses strand-filtered STAR/RSEM transcriptome BAM when aligner == "star" and bam2bakr == False;
-  #         automatically uses annotation-based genome-BAM TEC assignment for hisat3n, hisat2, or bam2bakr == True.
-  # "transcriptome": force STAR/RSEM transcriptome BAM TEC assignment (requires aligner == "star" and FASTQ input)
-  # "genome": force aligner-agnostic genome-BAM TEC assignment against `annotation`
-tec_mode: "auto"
-
-# Permitted overhang (bp) at annotated transcript 5' and 3' ends in genome TEC mode
-# (internal splice sites always enforce 0 bp overhang)
-tec_end_overhang: 2
-
-
-### Parameters that are only relevant if threeputr == True
-
-# If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
-# If call_threeputrs == False, an augmented copy of `annotation` is created automatically.
-  # Each transcript's terminal exon becomes a 3UTR assignment region with its own utr_id,
-  # including transcripts without CDS annotations. These are not strictly noncoding UTRs.
-  # Existing custom 3UTR records are reused instead; missing utr_id values are filled in.
-call_threeputrs: False
-
-# Only relevant if call_threeputrs == True
-# If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
-# 3'-ends will be filtered out
-only_annotated_threeputrs: True
-
-# Only relevant if call_threeputrs == True
-# Flag a run of this many As in the 25 bases downstream of cleavage, or >=7 As
-# in the first 10 downstream bases, in transcript orientation (possible internal priming).
-# Annotated sites are flagged but retained, including in annotated-only runs.
-# Suspicious unannotated sites are filtered. <=0 disables both criteria;
-# the exported false_polyA_ attribute is NA when assessment is disabled.
-false_polyA_len: 7
-
-# Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
-# Filter out de novo called 3'-UTRs not near AATAAA or ATTAAA in transcript orientation
-# Annotated 3' UTRs will always be kept
-require_CPA_site: False
-
-# Minimum coverage in a cluster of 3'-ends for it to make it to the annotation
-# = total number of reads across all samples
-# If you don't uncomment this parameter, default is 20 * number of samples
-# cluster_coverage: 100
-
-# Minimum fractional usage (# of reads / sum(# of reads for all clusters in gene) )
-# of a cluster for it to make it to the annotation
-cluster_fxn: 0.0
-
-# Length by which to extend either end of genes when finding genes that a cluster overlaps with
-extension: 0
-
-# How many reads does a 3'UTR need in at least one sample to make it to the final annotation
-coverage_cutoff: 25
-
-# -d parameter of bedtools cluster: maximum gap between neighboring intervals.
-# Chaining can produce clusters wider than this distance.
-bedtools_cluster_distance: 100
-
-
-### Deeptools bamCoverage parameters
-deeptools_params: ""
-
-
 ### What final output do you want pipeline to create?
   # cB = standard cB file tracking number of mutations and number of mutable reference nucleotides in each read.
   # cUP = remove the mutable reference nucleotide count and instead compute the average of this value for reads
@@ -275,6 +211,69 @@ make_tracks: True
   # Only relevant if aligner = 'star' and fastq files are
   # provided as input
 run_rsem: True
+
+### Transcript Equivalence Class (TEC) assignment mode (only relevant if features.tec == True)
+  # "auto": uses strand-filtered STAR/RSEM transcriptome BAM when aligner == "star" and bam2bakr == False;
+  #         automatically uses annotation-based genome-BAM TEC assignment for hisat3n, hisat2, or bam2bakr == True.
+  # "transcriptome": force STAR/RSEM transcriptome BAM TEC assignment (requires aligner == "star" and FASTQ input)
+  # "genome": force aligner-agnostic genome-BAM TEC assignment against `annotation`
+tec_mode: "auto"
+
+# Permitted overhang (bp) at annotated transcript 5' and 3' ends in genome TEC mode
+# (internal splice sites always enforce 0 bp overhang)
+tec_end_overhang: 2
+
+
+### Parameters that are only relevant if threeputr == True
+
+# If call_threeputrs == True, then 3'-ends are called de novo using your 3'-end sequencing data
+# If call_threeputrs == False, an augmented copy of `annotation` is created automatically.
+  # Each transcript's terminal exon becomes a 3UTR assignment region with its own utr_id,
+  # including transcripts without CDS annotations. These are not strictly noncoding UTRs.
+  # Existing custom 3UTR records are reused instead; missing utr_id values are filled in.
+call_threeputrs: False
+
+# Only relevant if call_threeputrs == True
+# If only_annotated_threeputrs == True, then de novo identified 3' UTRs that don't overlap with annotated
+# 3'-ends will be filtered out
+only_annotated_threeputrs: True
+
+# Only relevant if call_threeputrs == True
+# Flag a run of this many As in the 25 bases downstream of cleavage, or >=7 As
+# in the first 10 downstream bases, in transcript orientation (possible internal priming).
+# Annotated sites are flagged but retained, including in annotated-only runs.
+# Suspicious unannotated sites are filtered. <=0 disables both criteria;
+# the exported false_polyA_ attribute is NA when assessment is disabled.
+false_polyA_len: 7
+
+# Only relevant if call_threeputrs == True and only_annotated_threeputrs == False
+# Filter out de novo called 3'-UTRs not near AATAAA or ATTAAA in transcript orientation
+# Annotated 3' UTRs will always be kept
+require_CPA_site: False
+
+# Minimum coverage in a cluster of 3'-ends for it to make it to the annotation
+# = total number of reads across all samples
+# If you don't uncomment this parameter, default is 20 * number of samples
+# cluster_coverage: 100
+
+# Minimum fractional usage (# of reads / sum(# of reads for all clusters in gene) )
+# of a cluster for it to make it to the annotation
+cluster_fxn: 0.0
+
+# Length by which to extend either end of genes when finding genes that a cluster overlaps with
+extension: 0
+
+# How many reads does a 3'UTR need in at least one sample to make it to the final annotation
+coverage_cutoff: 25
+
+# -d parameter of bedtools cluster: maximum gap between neighboring intervals.
+# Chaining can produce clusters wider than this distance.
+bedtools_cluster_distance: 100
+
+
+### Deeptools bamCoverage parameters
+deeptools_params: ""
+
 
 
 
