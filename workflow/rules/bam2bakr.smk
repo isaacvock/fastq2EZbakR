@@ -149,15 +149,45 @@ rule genome_index:
         "../scripts/bam2bakR/genome-faidx.py"
 
 
+# Select top-coverage samples for no-control anomaly calling when strategy == "depth"
+if SNP_USE_DEPTH_CHECKPOINT:
+
+    checkpoint select_snp_samples:
+        input:
+            bams=expand("results/sf_reads/{s}.s.bam", s=SNP_CANDIDATE_SAMPS),
+        output:
+            selected="results/snps/selected_samples.txt",
+            depths="results/snps/sample_depths.tsv",
+        params:
+            pythonscript=workflow.source_path(
+                "../scripts/bam2bakR/select_snp_samples.py"
+            ),
+            max_samples=SNP_MAX_SAMPLES,
+        log:
+            "logs/select_snp_samples/select_snp_samples.log",
+        threads: 8
+        conda:
+            "../envs/full.yaml"
+        shell:
+            """
+            python {params.pythonscript:q} \
+                --bams {input.bams:q} \
+                --max-samples {params.max_samples} \
+                --threads {threads} \
+                --output-selected {output.selected:q} \
+                --output-depths {output.depths:q} 1> {log:q} 2>&1
+            """
+
+
 # Identify mutational anomalies / SNPs to mask when counting mutations
-if SNP_BAMS:
+if SNP_BAMS or SNP_USE_DEPTH_CHECKPOINT:
 
     rule call_snps:
         input:
             fasta=str(config["genome"]),
             fai=get_index_name(),
-            bams=SNP_BAMS,
-            bais=SNP_BAIS,
+            bams=get_snp_bams if SNP_USE_DEPTH_CHECKPOINT else SNP_BAMS,
+            bais=get_snp_bais if SNP_USE_DEPTH_CHECKPOINT else SNP_BAIS,
         params:
             pythonscript=workflow.source_path("../scripts/bam2bakR/call_snps.py"),
             minqual=config["minqual"],

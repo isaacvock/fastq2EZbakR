@@ -1,5 +1,6 @@
 import glob
 import os
+import random
 import shlex
 
 
@@ -359,24 +360,162 @@ s4U_SAMPS = list(set(SAMP_NAMES) - set(CTL_NAMES))
 nctl = len(CTL_NAMES)
 nsamps = len(SAMP_NAMES)
 
-if nctl > 0:
-    SNP_SAMP_NAMES = CTL_NAMES
-    SNP_MIN_DEPTH = config["snp_min_depth"]
-    SNP_MIN_FREQ = config["snp_min_freq"]
-    SNP_ERR_RATE = config["snp_err_rate"]
-elif config.get("call_snps_without_ctl", False):
-    SNP_SAMP_NAMES = SAMP_NAMES
-    SNP_MIN_DEPTH = config["snp_noctl_min_depth"]
-    SNP_MIN_FREQ = config["snp_noctl_min_freq"]
-    SNP_ERR_RATE = config["snp_noctl_err_rate"]
-else:
-    SNP_SAMP_NAMES = []
-    SNP_MIN_DEPTH = config["snp_min_depth"]
-    SNP_MIN_FREQ = config["snp_min_freq"]
-    SNP_ERR_RATE = config["snp_err_rate"]
+
+def _parse_snp_samples(raw_value, samp_names):
+    if raw_value is None or raw_value == "":
+        parsed = []
+    elif isinstance(raw_value, str):
+        parsed = [s.strip() for s in raw_value.split(",") if s.strip()]
+    elif isinstance(raw_value, (list, tuple)):
+        parsed = [str(s).strip() for s in raw_value if str(s).strip()]
+    else:
+        raise ValueError(
+            "Invalid snp_samples configuration; expected a list of sample "
+            "names or a comma-separated string."
+        )
+    parsed = list(dict.fromkeys(parsed))
+    if parsed:
+        valid_set = set(samp_names)
+        unknown = [s for s in parsed if s not in valid_set]
+        if unknown:
+            raise ValueError(
+                f"Unknown sample(s) in snp_samples: {unknown}. "
+                f"Valid samples: {list(samp_names)}."
+            )
+    return parsed
+
+
+def resolve_snp_sample_selection(cfg, samp_names, ctl_names):
+    raw_max = cfg.get("snp_max_samples", -1)
+    if isinstance(raw_max, bool):
+        raise ValueError(
+            f"Invalid snp_max_samples '{raw_max}'. Expected -1 or an integer >= 1."
+        )
+    try:
+        max_samples = int(raw_max)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Invalid snp_max_samples '{raw_max}'. Expected -1 or an integer >= 1."
+        ) from exc
+    if max_samples == 0 or max_samples < -1:
+        raise ValueError(
+            f"Invalid snp_max_samples '{raw_max}'. "
+            "Expected -1 (use all samples) or an integer >= 1."
+        )
+
+    strategy = str(cfg.get("snp_sample_strategy", "random")).strip().lower()
+    if strategy not in ("random", "depth"):
+        raise ValueError(
+            f"Unsupported snp_sample_strategy '{cfg.get('snp_sample_strategy')}'. "
+            "Expected 'random' or 'depth'."
+        )
+
+    raw_seed = cfg.get("snp_random_seed", 42)
+    if isinstance(raw_seed, bool):
+        raise ValueError(f"Invalid snp_random_seed '{raw_seed}'. Expected an integer.")
+    try:
+        seed = int(raw_seed)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Invalid snp_random_seed '{raw_seed}'. Expected an integer."
+        ) from exc
+
+    explicit_samples = _parse_snp_samples(cfg.get("snp_samples", []), samp_names)
+
+    if len(ctl_names) > 0:
+        return {
+            "use_depth_checkpoint": False,
+            "candidate_samps": list(ctl_names),
+            "selected_samps": list(ctl_names),
+            "max_samples": max_samples,
+            "strategy": strategy,
+            "seed": seed,
+            "min_depth": cfg["snp_min_depth"],
+            "min_freq": cfg["snp_min_freq"],
+            "err_rate": cfg["snp_err_rate"],
+        }
+
+    if cfg.get("call_snps_without_ctl", False):
+        candidates = explicit_samples if explicit_samples else list(samp_names)
+        if not candidates:
+            selected = []
+            use_ckpt = False
+        elif max_samples == -1 or len(candidates) <= max_samples:
+            selected = list(candidates)
+            use_ckpt = False
+        elif strategy == "random":
+            rng = random.Random(seed)
+            chosen_set = set(rng.sample(sorted(candidates), max_samples))
+            selected = [s for s in candidates if s in chosen_set]
+            use_ckpt = False
+        else:
+            selected = []
+            use_ckpt = True
+
+        return {
+            "use_depth_checkpoint": use_ckpt,
+            "candidate_samps": candidates,
+            "selected_samps": selected,
+            "max_samples": max_samples,
+            "strategy": strategy,
+            "seed": seed,
+            "min_depth": cfg["snp_noctl_min_depth"],
+            "min_freq": cfg["snp_noctl_min_freq"],
+            "err_rate": cfg["snp_noctl_err_rate"],
+        }
+
+    return {
+        "use_depth_checkpoint": False,
+        "candidate_samps": [],
+        "selected_samps": [],
+        "max_samples": max_samples,
+        "strategy": strategy,
+        "seed": seed,
+        "min_depth": cfg["snp_min_depth"],
+        "min_freq": cfg["snp_min_freq"],
+        "err_rate": cfg["snp_err_rate"],
+    }
+
+
+_SNP_CFG = resolve_snp_sample_selection(config, SAMP_NAMES, CTL_NAMES)
+SNP_USE_DEPTH_CHECKPOINT = _SNP_CFG["use_depth_checkpoint"]
+SNP_CANDIDATE_SAMPS = _SNP_CFG["candidate_samps"]
+SNP_SAMP_NAMES = _SNP_CFG["selected_samps"]
+SNP_MAX_SAMPLES = _SNP_CFG["max_samples"]
+SNP_MIN_DEPTH = _SNP_CFG["min_depth"]
+SNP_MIN_FREQ = _SNP_CFG["min_freq"]
+SNP_ERR_RATE = _SNP_CFG["err_rate"]
 
 SNP_BAMS = expand("results/coord_bam/{s}.bam", s=SNP_SAMP_NAMES)
 SNP_BAIS = expand("results/coord_bam/{s}.bam.bai", s=SNP_SAMP_NAMES)
+
+
+def _get_depth_selected_snp_samples(wildcards):
+    ckpt_file = checkpoints.select_snp_samples.get(**wildcards).output.selected
+    with open(ckpt_file, "r", encoding="utf-8") as handle:
+        selected = [line.strip() for line in handle if line.strip()]
+    if not selected:
+        raise ValueError(f"No samples were written to checkpoint file {ckpt_file}.")
+    return selected
+
+
+def get_snp_bams(wildcards):
+    if SNP_USE_DEPTH_CHECKPOINT:
+        return expand(
+            "results/coord_bam/{s}.bam",
+            s=_get_depth_selected_snp_samples(wildcards),
+        )
+    return SNP_BAMS
+
+
+def get_snp_bais(wildcards):
+    if SNP_USE_DEPTH_CHECKPOINT:
+        return expand(
+            "results/coord_bam/{s}.bam.bai",
+            s=_get_depth_selected_snp_samples(wildcards),
+        )
+    return SNP_BAIS
+
 
 _snp_mpileup_raw = str(config.get("snp_mpileup_params", "") or "").strip()
 SNP_MPILEUP_EXTRA_ARG = (

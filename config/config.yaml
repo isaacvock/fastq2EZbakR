@@ -369,13 +369,24 @@ snp_err_rate: 0.002
 snp_p_cutoff: 1.0e-4
 
 # Opt-in fallback when `control_samples: []` (no -s4U controls available):
-  # If True, pools all +s4U samples with conservative depth, frequency, and null-rate cutoffs
+  # If True, pools +s4U samples with conservative depth, frequency, and null-rate cutoffs
   # so true heterozygous/homozygous SNPs and RNA-editing sites are masked without censoring
   # heavily labeled nascent RNA reads.
 call_snps_without_ctl: False
 snp_noctl_min_depth: 20
 snp_noctl_min_freq: 0.35
 snp_noctl_err_rate: 0.10
+
+# Optional subsampling when `call_snps_without_ctl: True` (recommended for large datasets;
+# assumes samples share a genetic background unless all backgrounds are listed in `snp_samples`):
+  # Maximum number of samples to inspect (-1 = use all candidate samples; integer >= 1 = cap)
+snp_max_samples: -1
+  # Explicit candidate sample names to use (empty [] = all samples)
+snp_samples: []
+  # Selection strategy when `snp_max_samples` caps the candidate list ("random" or "depth")
+snp_sample_strategy: "random"
+  # Deterministic RNG seed used when `snp_sample_strategy == "random"`
+snp_random_seed: 42
 
 # Optional extra arguments passed directly to `samtools mpileup`
 snp_mpileup_params: ""

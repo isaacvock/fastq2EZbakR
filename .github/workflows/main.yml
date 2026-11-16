@@ -48,6 +48,12 @@ jobs:
         directory: .test
         snakefile: .test/flatten_tests.smk
         args: "test_flatten_annotation --use-conda --show-failed-logs --cores 1"
+    - name: Test SNP sample selection helper
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/snp_tests.smk
+        args: "test_snp_sample_selection --use-conda --show-failed-logs --cores 2"
     - name: Test workflow (alt-output)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:

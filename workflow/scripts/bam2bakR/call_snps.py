@@ -508,9 +508,11 @@ def main():
     regions = build_regions(active_contigs, threads)
 
     print(
-        f"Inspecting {len(bam_paths)} BAM(s) across {len(active_contigs)}/{len(all_contigs)} active contigs "
+        f"Inspecting {len(bam_paths)} BAM(s) ({', '.join(bam_labels)}) "
+        f"across {len(active_contigs)}/{len(all_contigs)} active contigs "
         f"({len(regions)} region chunks) using {threads} worker(s) "
-        f"[Phred>={min_phred}, depth>={min_depth}, alt>={min_alt}, freq>={min_freq}, p0={err_rate}, p<={p_cutoff}].",
+        f"[Phred>={min_phred}, depth>={min_depth}, alt>={min_alt}, "
+        f"freq>={min_freq}, p0={err_rate}, p<={p_cutoff}].",
         flush=True,
     )
 

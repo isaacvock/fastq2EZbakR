@@ -82,6 +82,10 @@ for _snp_key, _snp_default in (
     ("snp_noctl_min_depth", 20),
     ("snp_noctl_min_freq", 0.35),
     ("snp_noctl_err_rate", 0.10),
+    ("snp_max_samples", -1),
+    ("snp_samples", []),
+    ("snp_sample_strategy", "random"),
+    ("snp_random_seed", 42),
     ("snp_mpileup_params", ""),
 ):
     if _snp_key not in config:

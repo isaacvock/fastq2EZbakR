@@ -31,11 +31,13 @@
 !.test/threeputr_tests.smk
 !.test/threeputr_cluster_tests.smk
 !.test/flatten_tests.smk
+!.test/snp_tests.smk
 !.test/scripts/
 !.test/scripts/test_annotate_3pgtf.R
 !.test/scripts/test_make_3pgtf.R
 !.test/scripts/check_threeputr_output.R
 !.test/scripts/test_flatten_annotation.py
+!.test/scripts/test_snp_sample_selection.py
 !.test/configs/
 !.test/configs/*
 !.test/config_ChIP/*
