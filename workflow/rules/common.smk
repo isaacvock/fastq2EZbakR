@@ -22,7 +22,9 @@ if config["features"].get("junctions", False):
 ### GENERAL HELPER FUNCTIONS/VARIABLES USED IN ALL CASES
 
 if config["download_fastqs"]:
-    SAMP_NAMES = list(config["sra_accessions"])
+    SAMP_NAMES = [
+        str(acc).strip() for acc in config["sra_accessions"] if str(acc).strip()
+    ]
 else:
     SAMP_NAMES = list(config["samples"].keys())
 
@@ -48,9 +50,11 @@ else:
 VALID_FASTQ_EXTS = (".fastq", ".fq", ".fastq.gz", ".fq.gz")
 
 
+# Avoid f-strings in .smk files: Python 3.12 (PEP 701) + Snakemake <8.x
+# injects whitespace around f-string token boundaries during .smk parsing.
 def _list_sample_fastqs(fastq_path):
     if not os.path.isdir(fastq_path):
-        raise ValueError(f"FASTQ directory does not exist: {fastq_path}")
+        raise ValueError("FASTQ directory does not exist: {}".format(fastq_path))
     fastq_files = sorted(
         os.path.join(fastq_path, entry)
         for entry in os.listdir(fastq_path)
@@ -58,7 +62,9 @@ def _list_sample_fastqs(fastq_path):
     )
     if not fastq_files:
         raise ValueError(
-            f"No FASTQ files ({', '.join(VALID_FASTQ_EXTS)}) found in {fastq_path}"
+            "No FASTQ files ({}) found in {}".format(
+                ", ".join(VALID_FASTQ_EXTS), fastq_path
+            )
         )
     return fastq_files
 
@@ -66,22 +72,23 @@ def _list_sample_fastqs(fastq_path):
 # Define the function to get input FASTQ files
 # Suggested in issue #23: https://github.com/isaacvock/fastq2EZbakR/issues/23
 def get_input_fastqs(wildcards):
-    logger.debug(f"Resolving input for sample: {wildcards.sample}")
+    logger.debug("Resolving input for sample: {}".format(wildcards.sample))
 
     if config.get("download_fastqs", False):
         sra_reads = ["_1.fastq", "_2.fastq"] if config.get("PE", False) else [".fastq"]
         paths = sorted(
-            f"results/download_fastq/{wildcards.sample}{read}" for read in sra_reads
+            "results/download_fastq/{}{}".format(wildcards.sample, read)
+            for read in sra_reads
         )
-        logger.debug(f"SRA FASTQ paths for {wildcards.sample}: {paths}")
+        logger.debug("SRA FASTQ paths for {}: {}".format(wildcards.sample, paths))
         return paths
 
     fastq_path = config["samples"].get(wildcards.sample, None)
     if fastq_path is None:
-        raise ValueError(f"No path found for sample {wildcards.sample}")
+        raise ValueError("No path found for sample {}".format(wildcards.sample))
 
     fastq_files = _list_sample_fastqs(fastq_path)
-    logger.debug(f"Found FASTQ files for {wildcards.sample}: {fastq_files}")
+    logger.debug("Found FASTQ files for {}: {}".format(wildcards.sample, fastq_files))
     return fastq_files
 
 
@@ -93,7 +100,9 @@ if not config["download_fastqs"] and not config["bam2bakr"]:
     for p in fastq_paths.values():
         fastqs = [
             path
-            for path in set(glob.glob(f"{p}/*.fastq*") + glob.glob(f"{p}/*.fq*"))
+            for path in set(
+                glob.glob("{}/*.fastq*".format(p)) + glob.glob("{}/*.fq*".format(p))
+            )
             if path.endswith(VALID_FASTQ_EXTS)
         ]
         if any(path.endswith((".fastq.gz", ".fq.gz")) for path in fastqs):
@@ -103,7 +112,7 @@ if not config["download_fastqs"] and not config["bam2bakr"]:
 # Get mutation types to track
 MutTypes = config["mut_tracks"]
 Mutation_Types = [m.strip() for m in MutTypes.split(",") if m.strip()]
-Nucleotide_Types = [f"n{muttype[0]}" for muttype in Mutation_Types]
+Nucleotide_Types = ["n{}".format(muttype[0]) for muttype in Mutation_Types]
 
 
 ### FASTQC HELPERS
@@ -117,10 +126,8 @@ def get_fastqc_read(wildcards):
                 SID=wildcards.sample,
                 READ=wildcards.read,
             )
-        fastq_path = config["samples"][wildcards.sample]
-        fastq_files = _list_sample_fastqs(fastq_path)
         read_id = int(wildcards.read) - 1
-        return fastq_files[read_id]
+        return get_input_fastqs(wildcards)[read_id]
 
     return expand(
         "results/trimmed/{SID}.{READ}.fastq",
@@ -136,8 +143,7 @@ def get_fastq_r1(wildcards):
     if config["skip_trimming"]:
         if is_gz:
             return expand("results/unzipped/{SID}.1.fastq", SID=wildcards.sample)
-        fastq_path = config["samples"][wildcards.sample]
-        return _list_sample_fastqs(fastq_path)[0]
+        return get_input_fastqs(wildcards)[0]
 
     return expand("results/trimmed/{SID}.1.fastq", SID=wildcards.sample)
 
@@ -146,14 +152,13 @@ def get_fastq_r2(wildcards):
     if config["skip_trimming"]:
         if is_gz:
             return expand("results/unzipped/{SID}.2.fastq", SID=wildcards.sample)
-        fastq_path = config["samples"][wildcards.sample]
-        return _list_sample_fastqs(fastq_path)[1]
+        return get_input_fastqs(wildcards)[1]
 
     return expand("results/trimmed/{SID}.2.fastq", SID=wildcards.sample)
 
 
 # Determine whether or not indexing needs to be done
-star_indices = glob.glob(f"{INDEX_PATH}/genomeParameters.txt")
+star_indices = glob.glob("{}/genomeParameters.txt".format(INDEX_PATH))
 
 if config["aligner"] == "star":
     make_index = len(star_indices) == 0
@@ -168,15 +173,14 @@ def get_hisat2_reads(wildcards, READS=READS):
             return expand(
                 "results/unzipped/{SID}.{read}.fastq", SID=wildcards.sample, read=READS
             )
-        fastq_path = config["samples"][wildcards.sample]
-        return _list_sample_fastqs(fastq_path)
+        return get_input_fastqs(wildcards)
 
     return expand(
         "results/trimmed/{SID}.{read}.fastq", SID=wildcards.sample, read=READS
     )
 
 
-hisat2_indices = glob.glob(f"{INDEX_PATH}/*.ht2*")
+hisat2_indices = glob.glob("{}/*.ht2*".format(INDEX_PATH))
 
 if config["aligner"] == "hisat2":
     make_index = len(hisat2_indices) == 0
@@ -184,7 +188,7 @@ if config["aligner"] == "hisat2":
 
 ### HISAT-3N HELPERS
 
-hisat3n_indices = glob.glob(f"{INDEX_PATH}/*.3n.*.ht2*")
+hisat3n_indices = glob.glob("{}/*.3n.*.ht2*".format(INDEX_PATH))
 
 if config["aligner"] == "hisat3n":
     make_index = len(hisat3n_indices) == 0
@@ -194,23 +198,27 @@ if str(config.get("hisat3n_base_change", "")).strip():
 else:
     if not Mutation_Types or len(Mutation_Types[0]) != 2:
         raise ValueError(
-            f"Cannot derive hisat3n_base_change from mut_tracks='{config.get('mut_tracks')}'. "
-            "Specify hisat3n_base_change explicitly (e.g. 'T,C')."
+            "Cannot derive hisat3n_base_change from mut_tracks='{}'. "
+            "Specify hisat3n_base_change explicitly (e.g. 'T,C').".format(
+                config.get("mut_tracks")
+            )
         )
-    HISAT3N_BASE_CHANGE = f"{Mutation_Types[0][0]},{Mutation_Types[0][1]}"
+    HISAT3N_BASE_CHANGE = "{},{}".format(Mutation_Types[0][0], Mutation_Types[0][1])
     if config["aligner"] == "hisat3n" and len(Mutation_Types) > 1:
         logger.warning(
-            f"HISAT-3N supports a single --base-change per index/alignment run; "
-            f"using '{HISAT3N_BASE_CHANGE}' from first entry of mut_tracks='{config['mut_tracks']}'."
+            "HISAT-3N supports a single --base-change per index/alignment run; "
+            "using '{}' from first entry of mut_tracks='{}'.".format(
+                HISAT3N_BASE_CHANGE, config["mut_tracks"]
+            )
         )
 
 if config.get("hisat3n_index_base"):
-    HISAT3N_BASE = f"{INDEX_PATH}/{config['hisat3n_index_base']}"
+    HISAT3N_BASE = "{}/{}".format(INDEX_PATH, config["hisat3n_index_base"])
 elif hisat3n_indices:
     _detected_h3n_prefix = os.path.basename(sorted(hisat3n_indices)[0]).split(".3n.")[0]
-    HISAT3N_BASE = f"{INDEX_PATH}/{_detected_h3n_prefix}"
+    HISAT3N_BASE = "{}/{}".format(INDEX_PATH, _detected_h3n_prefix)
 else:
-    HISAT3N_BASE = f"{INDEX_PATH}/hisat3n_index"
+    HISAT3N_BASE = "{}/hisat3n_index".format(INDEX_PATH)
 
 HISAT3N_REPEAT_FLAG = (
     "--repeat-index" if config.get("hisat3n_repeat_index", False) else ""
@@ -379,8 +387,9 @@ def _parse_snp_samples(raw_value, samp_names):
         unknown = [s for s in parsed if s not in valid_set]
         if unknown:
             raise ValueError(
-                f"Unknown sample(s) in snp_samples: {unknown}. "
-                f"Valid samples: {list(samp_names)}."
+                "Unknown sample(s) in snp_samples: {}. Valid samples: {}.".format(
+                    unknown, list(samp_names)
+                )
             )
     return parsed
 
@@ -389,35 +398,41 @@ def resolve_snp_sample_selection(cfg, samp_names, ctl_names):
     raw_max = cfg.get("snp_max_samples", -1)
     if isinstance(raw_max, bool):
         raise ValueError(
-            f"Invalid snp_max_samples '{raw_max}'. Expected -1 or an integer >= 1."
+            "Invalid snp_max_samples '{}'. Expected -1 or an integer >= 1.".format(
+                raw_max
+            )
         )
     try:
         max_samples = int(raw_max)
     except (TypeError, ValueError) as exc:
         raise ValueError(
-            f"Invalid snp_max_samples '{raw_max}'. Expected -1 or an integer >= 1."
+            "Invalid snp_max_samples '{}'. Expected -1 or an integer >= 1.".format(
+                raw_max
+            )
         ) from exc
     if max_samples == 0 or max_samples < -1:
         raise ValueError(
-            f"Invalid snp_max_samples '{raw_max}'. "
-            "Expected -1 (use all samples) or an integer >= 1."
+            "Invalid snp_max_samples '{}'. "
+            "Expected -1 (use all samples) or an integer >= 1.".format(raw_max)
         )
 
     strategy = str(cfg.get("snp_sample_strategy", "random")).strip().lower()
     if strategy not in ("random", "depth"):
         raise ValueError(
-            f"Unsupported snp_sample_strategy '{cfg.get('snp_sample_strategy')}'. "
-            "Expected 'random' or 'depth'."
+            "Unsupported snp_sample_strategy '{}'. "
+            "Expected 'random' or 'depth'.".format(cfg.get("snp_sample_strategy"))
         )
 
     raw_seed = cfg.get("snp_random_seed", 42)
     if isinstance(raw_seed, bool):
-        raise ValueError(f"Invalid snp_random_seed '{raw_seed}'. Expected an integer.")
+        raise ValueError(
+            "Invalid snp_random_seed '{}'. Expected an integer.".format(raw_seed)
+        )
     try:
         seed = int(raw_seed)
     except (TypeError, ValueError) as exc:
         raise ValueError(
-            f"Invalid snp_random_seed '{raw_seed}'. Expected an integer."
+            "Invalid snp_random_seed '{}'. Expected an integer.".format(raw_seed)
         ) from exc
 
     explicit_samples = _parse_snp_samples(cfg.get("snp_samples", []), samp_names)
@@ -495,7 +510,9 @@ def _get_depth_selected_snp_samples(wildcards):
     with open(ckpt_file, "r", encoding="utf-8") as handle:
         selected = [line.strip() for line in handle if line.strip()]
     if not selected:
-        raise ValueError(f"No samples were written to checkpoint file {ckpt_file}.")
+        raise ValueError(
+            "No samples were written to checkpoint file {}.".format(ckpt_file)
+        )
     return selected
 
 
@@ -519,7 +536,9 @@ def get_snp_bais(wildcards):
 
 _snp_mpileup_raw = str(config.get("snp_mpileup_params", "") or "").strip()
 SNP_MPILEUP_EXTRA_ARG = (
-    f"--mpileup-extra={shlex.quote(_snp_mpileup_raw)}" if _snp_mpileup_raw else ""
+    "--mpileup-extra={}".format(shlex.quote(_snp_mpileup_raw))
+    if _snp_mpileup_raw
+    else ""
 )
 
 
@@ -541,7 +560,8 @@ def get_input_bams(wildcards):
 _raw_tec_mode = str(config.get("tec_mode", "auto")).strip().lower()
 if _raw_tec_mode not in ("auto", "transcriptome", "genome"):
     raise ValueError(
-        f"Unsupported tec_mode '{config.get('tec_mode')}'. Expected 'auto', 'transcriptome', or 'genome'."
+        "Unsupported tec_mode '{}'. "
+        "Expected 'auto', 'transcriptome', or 'genome'.".format(config.get("tec_mode"))
     )
 if _raw_tec_mode == "auto":
     TEC_MODE = (
@@ -606,47 +626,48 @@ def fetch_informative_read(wildcards):
 
 
 def get_merge_input(wildcards):
-    merge_input = [f"results/counts/{wildcards.sample}_counts.csv.gz"]
+    sid = wildcards.sample
+    merge_input = ["results/counts/{}_counts.csv.gz".format(sid)]
 
     if config.get("features").get("genes", True):
         merge_input.append(
-            f"results/featurecounts_genes/{wildcards.sample}.s.bam.featureCounts"
+            "results/featurecounts_genes/{}.s.bam.featureCounts".format(sid)
         )
 
     if config.get("features").get("exons", True):
         merge_input.append(
-            f"results/featurecounts_exons/{wildcards.sample}.s.bam.featureCounts"
+            "results/featurecounts_exons/{}.s.bam.featureCounts".format(sid)
         )
 
     if config.get("features").get("transcripts", False):
         merge_input.append(
-            f"results/featurecounts_transcripts/{wildcards.sample}.s.bam.featureCounts"
+            "results/featurecounts_transcripts/{}.s.bam.featureCounts".format(sid)
         )
 
     if config.get("features").get("exonic_bins", False):
         merge_input.append(
-            f"results/featurecounts_exonbins/{wildcards.sample}.s.bam.featureCounts"
+            "results/featurecounts_exonbins/{}.s.bam.featureCounts".format(sid)
         )
 
     if config.get("features").get("tec", False):
-        merge_input.append(f"results/read_to_transcripts/{wildcards.sample}.csv")
+        merge_input.append("results/read_to_transcripts/{}.csv".format(sid))
 
     if config.get("features").get("junctions", False):
-        merge_input.append(f"results/read_to_junctions/{wildcards.sample}.csv.gz")
+        merge_input.append("results/read_to_junctions/{}.csv.gz".format(sid))
 
     if config.get("features").get("threeputr", False):
         merge_input.append(
-            f"results/featurecounts_3utr/{wildcards.sample}{FC_3UTR_CORE_EXT}"
+            "results/featurecounts_3utr/{}{}".format(sid, FC_3UTR_CORE_EXT)
         )
 
     if config.get("features").get("eej", False):
         merge_input.append(
-            f"results/featurecounts_eej/{wildcards.sample}.s.bam.featureCounts"
+            "results/featurecounts_eej/{}.s.bam.featureCounts".format(sid)
         )
 
     if config.get("features").get("eij", False):
         merge_input.append(
-            f"results/featurecounts_eij/{wildcards.sample}.s.bam.featureCounts"
+            "results/featurecounts_eij/{}.s.bam.featureCounts".format(sid)
         )
 
     return merge_input

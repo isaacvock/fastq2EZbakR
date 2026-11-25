@@ -26,9 +26,9 @@ rule annotate_threepUTR_gtf:
 rule get_informative_read:
     input:
         lambda wc: (
-            f"results/coord_bam/{wc.sample}.bam"
+            "results/coord_bam/{}.bam".format(wc.sample)
             if config.get("call_threeputrs", False)
-            else f"results/sf_reads/{wc.sample}.s.bam"
+            else "results/sf_reads/{}.s.bam".format(wc.sample)
         ),
     output:
         temp("results/informative_read/{sample}_informative.bam"),
@@ -54,9 +54,9 @@ rule get_informative_read:
 rule bam_to_3pend_bg:
     input:
         lambda wc: (
-            f"results/informative_read/{wc.sample}_informative.bam"
+            "results/informative_read/{}_informative.bam".format(wc.sample)
             if config.get("PE", False)
-            else f"results/coord_bam/{wc.sample}.bam"
+            else "results/coord_bam/{}.bam".format(wc.sample)
         ),
     output:
         temp("results/bam2bg/{sample}_informative_{strand}.bg"),

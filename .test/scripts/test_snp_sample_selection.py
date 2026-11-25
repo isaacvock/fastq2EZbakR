@@ -256,6 +256,177 @@ def run_all_tests(selector_path, common_smk_path, test_bam_dir):
         ]
         assert [r["selected"] for r in rows] == ["True", "True", "False", "False"]
 
+    # 10. Guard workflow Snakefile & .smk rules against PEP 701 f-string regressions
+    #     and verify download_fastqs + skip_trimming helper paths
+    _assert_no_fstrings_in_workflow_smk(common_smk_path)
+    _verify_sra_fastq_helpers(common_smk_path)
+
+
+def _find_fstrings_in_file(path):
+    """Return 1-based line numbers containing f-string literals in `path`."""
+    with open(path, "r", encoding="utf-8") as fh:
+        text = fh.read()
+
+    hits = []
+    idx = 0
+    length = len(text)
+    line_no = 1
+    in_str = None
+
+    while idx < length:
+        ch = text[idx]
+        if ch == "\n":
+            line_no += 1
+            idx += 1
+            continue
+
+        if in_str is not None:
+            if ch == "\\":
+                if idx + 1 < length and text[idx + 1] == "\n":
+                    line_no += 1
+                idx += 2
+                continue
+            if text.startswith(in_str, idx):
+                idx += len(in_str)
+                in_str = None
+                continue
+            idx += 1
+            continue
+
+        if ch == "#":
+            while idx < length and text[idx] != "\n":
+                idx += 1
+            continue
+
+        prev_is_ident = idx > 0 and (
+            text[idx - 1].isalnum() or text[idx - 1] == "_"
+        )
+        if not prev_is_ident and ch in "fFrRbBuU":
+            p_end = idx
+            while p_end < length and text[p_end] in "fFrRbBuU":
+                p_end += 1
+            if p_end < length and text[p_end] in ("'", '"'):
+                prefix = text[idx:p_end].lower()
+                q_char = text[p_end]
+                delim = (
+                    q_char * 3
+                    if text.startswith(q_char * 3, p_end)
+                    else q_char
+                )
+                if "f" in prefix:
+                    hits.append(line_no)
+                in_str = delim
+                idx = p_end + len(delim)
+                continue
+
+        if ch in ("'", '"'):
+            delim = ch * 3 if text.startswith(ch * 3, idx) else ch
+            in_str = delim
+            idx += len(delim)
+            continue
+
+        idx += 1
+
+    return hits
+
+
+def _assert_no_fstrings_in_workflow_smk(common_smk_path):
+    """Ensure Snakefile and workflow/rules/*.smk stay free of f-strings."""
+    rules_dir = os.path.dirname(os.path.abspath(common_smk_path))
+    workflow_dir = os.path.dirname(rules_dir)
+    smk_files = [os.path.join(workflow_dir, "Snakefile")]
+    for entry in sorted(os.listdir(rules_dir)):
+        if entry.endswith(".smk"):
+            smk_files.append(os.path.join(rules_dir, entry))
+
+    for smk_file in smk_files:
+        bad_lines = _find_fstrings_in_file(smk_file)
+        assert not bad_lines, (
+            f"Found f-string(s) in {smk_file} at line(s) {bad_lines}; "
+            "use .format() or + in .smk files for Python 3.12 + Snakemake 7 safety."
+        )
+
+    # Sanity-check the lexer itself detects f-strings when present
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".smk", encoding="utf-8", delete=False
+    ) as tmp_fh:
+        tmp_fh.write('# f"ignored comment"\nx = "RF"\ny = f"bad_{x}"\n')
+        probe_path = tmp_fh.name
+    try:
+        assert _find_fstrings_in_file(probe_path) == [3]
+    finally:
+        os.remove(probe_path)
+
+
+def _verify_sra_fastq_helpers(common_smk_path):
+    """Verify SRA download_fastqs path resolution with and without skip_trimming."""
+    with open(common_smk_path, "r", encoding="utf-8") as fh:
+        source = fh.read()
+    tree = ast.parse(source, filename=common_smk_path)
+    wanted = {
+        "_list_sample_fastqs",
+        "get_input_fastqs",
+        "get_fastqc_read",
+        "get_fastq_r1",
+        "get_fastq_r2",
+        "get_hisat2_reads",
+    }
+    fn_nodes = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name in wanted
+    ]
+    assert len(fn_nodes) == len(wanted)
+
+    class _DummyLogger:
+        def debug(self, *_args):
+            pass
+
+    class _WC:
+        def __init__(self, sample, read="1"):
+            self.sample = sample
+            self.read = read
+
+    cfg = {
+        "download_fastqs": True,
+        "PE": True,
+        "skip_trimming": True,
+        "samples": {},
+    }
+    ns = {
+        "os": os,
+        "config": cfg,
+        "logger": _DummyLogger(),
+        "is_gz": False,
+        "READS": [1, 2],
+        "VALID_FASTQ_EXTS": (".fastq", ".fq", ".fastq.gz", ".fq.gz"),
+        "expand": lambda pat, **kw: [pat],
+    }
+    compiled = compile(
+        ast.Module(body=fn_nodes, type_ignores=[]), common_smk_path, "exec"
+    )
+    exec(compiled, ns)
+
+    wc1 = _WC("SRR24069126", "1")
+    wc2 = _WC("SRR24069126", "2")
+    expected_pe = [
+        "results/download_fastq/SRR24069126_1.fastq",
+        "results/download_fastq/SRR24069126_2.fastq",
+    ]
+    assert ns["get_input_fastqs"](wc1) == expected_pe
+    assert ns["get_fastq_r1"](wc1) == expected_pe[0]
+    assert ns["get_fastq_r2"](wc1) == expected_pe[1]
+    assert ns["get_fastqc_read"](wc1) == expected_pe[0]
+    assert ns["get_fastqc_read"](wc2) == expected_pe[1]
+    assert ns["get_hisat2_reads"](wc1, READS=[1, 2]) == expected_pe
+
+    cfg["PE"] = False
+    expected_se = ["results/download_fastq/SRR24069126.fastq"]
+    assert ns["get_input_fastqs"](wc1) == expected_se
+    assert ns["get_fastq_r1"](wc1) == expected_se[0]
+    assert ns["get_fastqc_read"](wc1) == expected_se[0]
+    assert ns["get_hisat2_reads"](wc1, READS=[1]) == expected_se
+
 
 def main():
     if len(sys.argv) != 5:

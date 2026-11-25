@@ -20,7 +20,9 @@ container: "docker://docker.io/isaacvock/snakeverse-base:0.1.0"
 config["aligner"] = str(config.get("aligner", "star")).strip().lower().replace("-", "")
 if config["aligner"] not in ("star", "hisat2", "hisat3n"):
     raise ValueError(
-        f"Unsupported aligner '{config.get('aligner')}'. Expected 'star', 'hisat2', or 'hisat3n'."
+        "Unsupported aligner '{}'. Expected 'star', 'hisat2', or 'hisat3n'.".format(
+            config.get("aligner")
+        )
     )
 
 if config.get("lowRAM", False):
