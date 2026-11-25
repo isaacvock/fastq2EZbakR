@@ -334,10 +334,17 @@ def _assert_no_fstrings_in_workflow_smk(common_smk_path):
     """Ensure Snakefile and workflow/rules/*.smk stay free of f-strings."""
     rules_dir = os.path.dirname(os.path.abspath(common_smk_path))
     workflow_dir = os.path.dirname(rules_dir)
+    if not os.path.exists(os.path.join(workflow_dir, "Snakefile")):
+        alt_workflow = os.path.abspath("../workflow")
+        if os.path.exists(os.path.join(alt_workflow, "Snakefile")):
+            workflow_dir = alt_workflow
+            rules_dir = os.path.join(workflow_dir, "rules")
+
     smk_files = [os.path.join(workflow_dir, "Snakefile")]
     for entry in sorted(os.listdir(rules_dir)):
         if entry.endswith(".smk"):
             smk_files.append(os.path.join(rules_dir, entry))
+    assert len(smk_files) >= 10, f"Expected workflow .smk files, got {smk_files}"
 
     for smk_file in smk_files:
         bad_lines = _find_fstrings_in_file(smk_file)

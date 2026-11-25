@@ -16,7 +16,7 @@ rule test_snp_sample_selection:
         selector=workflow.source_path(
             "../workflow/scripts/bam2bakR/select_snp_samples.py"
         ),
-        common_smk=workflow.source_path("../workflow/rules/common.smk"),
+        common_smk="../workflow/rules/common.smk",
         bam_dir="data/bams",
     shell:
         """
