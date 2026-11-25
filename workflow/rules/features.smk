@@ -253,7 +253,7 @@ rule featurecounts_3utr:
             ".featureCounts",
             ".featureCounts.summary",
         ),
-        temp("results/featurecounts_3utr/{sample}" + FC_3UTR_CORE_EXT),
+        temp(FC_3UTR_CORE_OUT),
     conda:
         "../envs/genomictools.yaml"
     params:

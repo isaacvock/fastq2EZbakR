@@ -606,6 +606,11 @@ FC_3UTR_CORE_EXT = (
     if config.get("PE", False)
     else ".s.bam.featureCounts"
 )
+FC_3UTR_CORE_OUT = (
+    "results/featurecounts_3utr/{sample}_informative.bam.featureCounts"
+    if config.get("PE", False)
+    else "results/featurecounts_3utr/{sample}.s.bam.featureCounts"
+)
 
 if config.get("call_threeputrs", False):
     THREEPUTR_ANNOTATION = "annotations/threepUTR_annotation.gtf"
