@@ -54,48 +54,72 @@ jobs:
         directory: .test
         snakefile: .test/snp_tests.smk
         args: "test_snp_sample_selection --use-conda --show-failed-logs --cores 2"
-    - name: Test workflow (alt-output)
+    - name: Test workflow output validator
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
-        snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/altoutput_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Test workflow (transcripts no fastp)
-      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
-      with:
-        directory: .test
-        snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Test workflow (mutpos)
-      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
-      with:
-        directory: .test
-        snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/mutpos_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Test workflow (transcripts)
+        snakefile: .test/workflow_tests.smk
+        args: "test_workflow_validator --use-conda --show-failed-logs --cores 1"
+    - name: Test workflow (legacy transcripts config)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
         args: "--configfile .test/configs/transcript_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Test workflow (bam2EZbakR)
+    - name: Validate & clean (legacy transcripts)
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/workflow_tests.smk
+        args: "validate_and_clean --config target_config=configs/transcript_config.yaml clean_indices=False --use-conda --show-failed-logs --cores 1 --forceall"
+    - name: Test workflow (STAR + RSEM + skip_trimming)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/bam2bakR_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Test workflow (hisat2)
+        args: "--configfile .test/configs/star_rsem_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
+    - name: Validate & clean (STAR + RSEM)
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/workflow_tests.smk
+        args: "validate_and_clean --config target_config=configs/star_rsem_config.yaml clean_indices=True --use-conda --show-failed-logs --cores 1 --forceall"
+    - name: Test workflow (HISAT-3N + genome TEC + no-ctl depth SNPs)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/hisat2_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
-    - name: Clean up
+        args: "--configfile .test/configs/hisat3n_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
+    - name: Validate & clean (HISAT-3N)
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/workflow_tests.smk
+        args: "validate_and_clean --config target_config=configs/hisat3n_config.yaml clean_indices=True --use-conda --show-failed-logs --cores 1 --forceall"
+    - name: Test workflow (bam2EZbakR + cUP/arrow without cB)
       uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
       with:
         directory: .test
         snakefile: workflow/Snakefile
-        args: "--configfile .test/configs/transcript_nofastp.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --delete-all-output --latency-wait 30"
+        args: "--configfile .test/configs/bam2bakr_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
+    - name: Validate & clean (bam2EZbakR)
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/workflow_tests.smk
+        args: "validate_and_clean --config target_config=configs/bam2bakr_config.yaml clean_indices=False --use-conda --show-failed-logs --cores 1 --forceall"
+    - name: Test workflow (HISAT2 + mutpos + no-ctl random SNPs)
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: workflow/Snakefile
+        args: "--configfile .test/configs/hisat2_mutpos_config.yaml --use-conda --show-failed-logs --cores 2 --set-threads maketdf=1 --conda-cleanup-pkgs cache --latency-wait 30"
+    - name: Validate & clean (HISAT2 + mutpos)
+      uses: ezherman/snakemake-github-action@b6bd319468ad9a049d37058554ebcd52eca38c92
+      with:
+        directory: .test
+        snakefile: .test/workflow_tests.smk
+        args: "validate_and_clean --config target_config=configs/hisat2_mutpos_config.yaml clean_indices=True --use-conda --show-failed-logs --cores 1 --forceall"
 
   run-workflow-3p:
     runs-on: ubuntu-latest
