@@ -5,6 +5,7 @@ import argparse
 import csv
 import glob
 import gzip
+import importlib.util
 import os
 import shutil
 import sys
@@ -461,6 +462,32 @@ def _run_self_test(configs_dir):
         clean_run_artifacts(cfg, workdir=tmp_dir, clean_indices=True)
         assert not os.path.exists(os.path.join(tmp_dir, "results"))
         assert not os.path.exists(os.path.join(tmp_dir, "hisat3n_index"))
+
+        # Test standalone HISAT-3N splice-site extractor on genome.gtf + .gtf.gz
+        test_root = os.path.dirname(os.path.abspath(configs_dir))
+        repo_root = os.path.dirname(test_root)
+        ss_script = os.path.join(
+            repo_root, "workflow", "scripts", "alignment", "extract_splice_sites.py"
+        )
+        spec = importlib.util.spec_from_file_location("extract_ss", ss_script)
+        ss_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ss_mod)
+
+        genome_gtf = os.path.join(test_root, "data", "annotation", "genome.gtf")
+        genome_ss = ss_mod.extract_splice_sites(genome_gtf)
+        assert len(genome_ss) > 50
+        for chrom, left_0, right_0, strand in genome_ss:
+            assert chrom and left_0 >= 0 and right_0 > left_0 and strand in ("+", "-")
+
+        syn_gz = os.path.join(tmp_dir, "syn.gtf.gz")
+        with gzip.open(syn_gz, "wt", encoding="utf-8", newline="\n") as gz_fh:
+            gz_fh.write(
+                'chr1\tsrc\texon\t101\t200\t.\t+\t.\ttranscript_id "T1";\n'
+                'chr1\tsrc\texon\t204\t250\t.\t+\t.\ttranscript_id "T1";\n'
+                'chr1\tsrc\texon\t401\t500\t.\t+\t.\ttranscript_id "T1";\n'
+            )
+        # 204 - 200 = 4 (<=5 bp merged), leaving single intron 250..401 -> (249, 400)
+        assert ss_mod.extract_splice_sites(syn_gz) == [("chr1", 249, 400, "+")]
 
     print("check_workflow_output.py self-tests passed.", flush=True)
 

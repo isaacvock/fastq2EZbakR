@@ -232,13 +232,19 @@ if config["aligner"] == "hisat3n":
                 annotation=config["annotation"],
             output:
                 "results/get_ss/splice_sites.ss",
+            params:
+                pythonscript=workflow.source_path(
+                    "../scripts/alignment/extract_splice_sites.py"
+                ),
             log:
                 "logs/get_ss/ss.log",
             conda:
                 "../envs/hisat3n.yaml"
             threads: 1
             shell:
-                "hisat2_extract_splice_sites.py {input.annotation:q} 1> {output:q} 2> {log:q}"
+                """
+                python {params.pythonscript:q} {input.annotation:q} 1> {output:q} 2> {log:q}
+                """
 
         if config["PE"]:
 
