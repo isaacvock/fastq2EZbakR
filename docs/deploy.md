@@ -34,9 +34,9 @@ snakemake --cores all --use-conda --rerun-triggers mtime --keep-going
 
 ## Detailed instructions
 
-There are 4 steps required to get up and running with THE_Aligner
+There are 4 steps required to get up and running with fastq2EZbakR
 
-1. [Install conda (or mamba) on your system](#conda). This is the package manager that THE_Aligner uses to make setting up the necessary dependencies a breeze.
+1. [Install conda (or mamba) on your system](#conda). This is the package manager that fastq2EZbakR uses to make setting up the necessary dependencies a breeze.
 1. [Deploy workflow](#deploy) with [Snakedeploy](https://snakedeploy.readthedocs.io/en/latest/index.html)
 1. [Edit the config file](#config) (located in config/ directory of deployed/cloned repo) to your liking
 1. [Run it!](#run)
@@ -89,7 +89,7 @@ Snakemake pipelines can be deployed using the tool [Snakedeploy](https://snakede
 mamba create -c conda-forge -c bioconda --name deploy_snakemake snakemake snakedeploy
 ```
 
-Next, create a directory that you want to run THE_Aligner in (I'll refer to it as `workdir`) and move into it:
+Next, create a directory that you want to run fastq2EZbakR in (I'll refer to it as `workdir`) and move into it:
 ``` bash
 mkdir workdir
 cd workdir

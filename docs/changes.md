@@ -1,5 +1,23 @@
 ## Release Notes
 
+### Version 0.9.0
+
+Major new features, performance improvements, and bug fixes:
+
+1. **HISAT-3N alignment (`aligner: "hisat3n"`)**: Native 3-nucleotide conversion-aware indexing and alignment, with `hisat3n_base_change` automatically derived from `mut_tracks` by default.
+2. **Aligner-agnostic `tec` and `junctions` assignment**: Both `features.tec` (`tec_mode`) and `features.junctions` now work across all aligners (`star`, `hisat3n`, `hisat2`) and external BAM inputs (`bam2bakr`), using genome-BAM splice/strand compatibility and CIGAR-`N` intron coordinates when STAR tags/transcriptome BAMs are unavailable.
+3. **Redesigned mutational-anomaly ("SNP") calling**: Replaced `bcftools` with a parallel `samtools mpileup` + exact binomial and allele-frequency caller (`snp_*`), masking flagged sites from both mutation counts and reference-base denominators (e.g., `nT`). Added opt-in `+s4U` anomaly calling when `-s4U` controls are unavailable (`call_snps_without_ctl`), with tunable sample subsampling (`snp_max_samples`, `snp_samples`, `snp_sample_strategy`, `snp_random_seed`).
+4. **Robust exon-bin annotation flattening**: Replaced the legacy DEXSeq/HTSeq scripts with a standalone Python flattener supporting `.gtf`/`.gtf.gz`, opposite-strand overlapping genes, and multi-locus `gene_id` disambiguation (`<gene>_loc1`, `<gene>_loc2`, ...).
+5. **Improved 3'-UTR workflows**: Annotation-only mode (`call_threeputrs: False`) now supports GTFs without explicit `3UTR` records, and de novo PAS clustering (`call_threeputrs: True`) weights coverage by interval width.
+6. **Performance & bug fixes**: Direct parallel BGZF streaming in `cnt_muts` (with indel-flank masking), unified streaming DuckDB `merge_features_and_muts` (deprecating `lowRAM` and retiring `RSEM_plus`), shared on-demand coordinate BAM sorting, race-free `maketdf` temp files, and fixes for `download_fastqs` + `skip_trimming` and Python 3.12 + Snakemake 7 f-string path parsing.
+
+### Version 0.8.1 - 0.8.3
+
+Quality-of-life and bug-fix patches:
+
+- Fixed strand orientation of `.tdf` browser tracks for reverse-stranded libraries (`pos` and `min` tracks are no longer flipped).
+- Fixed `mutpos` site-specific counting edge cases, updated config defaults/comments (including `minqual` documentation), and hardened `maketdf` against empty bedGraph crashes.
+
 ### Version 0.8.0
 
 A new feature assignment strategy has been added: assignment to 3'-ends (`threeputr`). This strategy is only appropriate if one has 3'-end sequencing data (e.g., if you used the popular Quant-seq SLAM-seq kit).

@@ -10,7 +10,7 @@ Step 1: Read the [Deployment](deploy.md) documentation to get up and running wit
 
 Step 2: Read the [Configuration](configuration.md) documentation to get details about all config parameters.
 
-Stpe 3: Read about fastq2EZbakR's [generalized feature assignment](features.md), one of the major benefits of using fastq2EZbakR.
+Step 3: Read about fastq2EZbakR's [generalized feature assignment](features.md), one of the major benefits of using fastq2EZbakR.
 
 Step 4: Read the [Tips and Tricks](tips.md) documentation for helpful pointers that may make your life easier.
 
@@ -31,10 +31,12 @@ In addition, columns reporting mutation counts and nucleotide counts will be inc
 
 * GF: gene read was assigned to (any region of gene)
 * XF: gene read was assigned to (only exonic regions of gene)
-* exonic_bin: exonic bins as defined in DEXSeq paper
-* transcripts: set of transcripts a read is compatible with (i.e, its transcript equivalence class)
+* exon_bin: exonic bins as defined in DEXSeq paper
+* TEC: set of transcripts a read is strand- and splice-compatible with (i.e., its transcript equivalence class)
+* transcripts: transcripts whose annotated exons a read overlaps (via featureCounts)
 * junction_start: 5' splice site of exon-exon junction (genomic coordinate)
 * junction_end: 3' splice site of exon-exon junction (genomic coordinate)
+* threepUTR: 3'-end / terminal exon ID a read's 3'-most base was assigned to
 * ei_junction_id: Numerical ID given to a given exon-intron junction
 * ee_junction_id: Numerical ID given to a given exon-exon junction
 
@@ -62,12 +64,12 @@ It can take either FASTQ files or BAM files as input. If FASTQ files are provide
 1. [fastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) is run on each FASTQ file to generate QC reports. 
 1. Adapters are trimmed with [fastp](https://github.com/OpenGene/fastp). This can be turned off (e.g., if you already did this before running fastq2EZbakR) by setting the `skip_trimming` parameter in your config.yaml file to `True`. If you have paired end data, adapters can be automatically detected. If not, or if you don't want to rely on automatic detection, you can specify adapters in the `fastp_adapters` parameter of the config.yaml file.
 1. An alignment index is built (if the path specified in the `indices` parameter of the config doesn't already exist) using your provided genome FASTA file and annotation GTF file.
-1. Reads are aligned with your choice of aligner (currently [STAR](https://github.com/alexdobin/STAR) and [HISAT2](https://github.com/DaehwanKimLab/hisat2) are implemented, but currently only the use of STAR supports all possible feature assignment strategies. Specify your choice in the `aligner` parameter of the config.yaml file).
+1. Reads are aligned with your choice of aligner ([STAR](https://github.com/alexdobin/STAR), [HISAT2](https://github.com/DaehwanKimLab/hisat2), and [HISAT-3N](https://github.com/DaehwanKimLab/hisat2/tree/hisat-3n) are implemented, and all established feature assignment strategies work with any aligner. Specify your choice in the `aligner` parameter of the config.yaml file).
 
 The following steps will run in either the FASTQ or BAM file input cases: 
 
 1. BAM files are filtered and sorted by read name. The former removes unaligned reads and non-primary alignments. The latter is important for parallelization of mutation counting, and is required by the feature assignment scripts.
-1. If you have -label control samples (e.g., -s<sup>4</sup>U control samples in a standard NR-seq experiment), these can be used to call SNPs. These will be used to avoid false positive mutation counts.
+1. If you have -label control samples (e.g., -s<sup>4</sup>U control samples in a standard NR-seq experiment), these can be used to call SNPs / mutational anomalies (or you can optionally call high-frequency anomalies from +label samples via `call_snps_without_ctl: True`). Flagged positions are excluded from both mutation counts and reference base denominators.
 1. Reads are assigned to feature, either using featureCounts or custom scripting. See [Feature Assignment](features.md) for details of what feature assignment strategies exist. You can choose which ones to implement in a particular pipeline run under the `features` parameter in the config.yaml file.
 1. Mutations are counted with some custom scripting. All mutation types are tallied in the intermediate files created in the `results/counts` directory created by running fastq2EZbakR. You can specify which to include in the final processed cB file in the `mut_tracks` parameter in your config.yaml file.
 1. Feature assignment and mutation counts are merged.

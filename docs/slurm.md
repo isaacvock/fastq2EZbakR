@@ -4,7 +4,7 @@ This page provides instructions for running fastq2EZbakR on HPC clusters that us
 
 ## Important note
 
-Version 8 of Snakemake completely changed how Snakemake submits jobs to clusters. The instructions and profile discussed below will only work with versions < 8.0.0. If you need to use versions >= 8.0.0, please check out [this repository](https://github.com/jdblischak/smk-simple-slurm), which is also where the version 7 compatible strategy that I discuss below originally came from. 
+Version 8 of Snakemake completely changed how Snakemake submits jobs to clusters. The main walkthrough below describes the root `yale_profile/` configuration, which works with Snakemake versions < 8.0.0. If you are using Snakemake >= 8.0.0, `yale_profile` now also includes a `yale_profile/v8plus/` subdirectory compatible with v8+ (adapted from [this repository](https://github.com/jdblischak/smk-simple-slurm)); to use it, install `snakemake-executor-plugin-cluster-generic` alongside `snakemake` in your `deploy_snakemake` environment, add `yale_profile/v8plus` to your `PATH`, and pass `--profile yale_profile/v8plus/`. 
 
 ## Advice: set the SNAKEMAKE_CONDA_PREFIX environment variable
 
@@ -208,7 +208,7 @@ default-resources:
   - time="4:00:00"
 ```
 
-This will set default values for `{resources.mem_mb}`, `{threads}`, and `{resources.time}`. So unless the pipeline specifies otherwise, 70 GB of RAM, 20 cpus, and 4 hours of runtime will be requested. Some rules in THE_Aligner sets the maximum amount of these resources you can request. For example, not all tools can use more than one cpu, so the rules implementing those tools will set the max value for `{threads}` to 1. For rules with the max number of threads allowed set, the number of cpus requested will be the mininmum of the max threads allowed and the number of cpus set in `default-resources`.
+This will set default values for `{resources.mem_mb}`, `{threads}`, and `{resources.time}`. So unless the pipeline specifies otherwise, 70 GB of RAM, 20 cpus, and 4 hours of runtime will be requested. Some rules in fastq2EZbakR set the maximum amount of these resources you can request. For example, not all tools can use more than one cpu, so the rules implementing those tools will set the max value for `{threads}` to 1. For rules with the max number of threads allowed set, the number of cpus requested will be the mininmum of the max threads allowed and the number of cpus set in `default-resources`.
 
 Finally, a number of additional settings are specified. These are optional parameters that are effectively passed to the call to `snakemake` in `run_slurm.sh`:
 
