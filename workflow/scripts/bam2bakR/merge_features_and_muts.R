@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 ### PURPOSE OF THIS SCRIPT
-## Merge feature assignment and mutation counts tables
+## Merge feature assignment and mutation counts tables via streaming DuckDB views
 
 # Load dependencies ------------------------------------------------------------
 
@@ -14,110 +14,106 @@ library(utils)
 
 # Process CLI options ----------------------------------------------------------
 
-args <- commandArgs(trailingOnly = TRUE)
-
 option_list <- list(
-  make_option(c("-g", "--genes", type = "logical"),
-              default = "FALSE",
+  make_option(c("-g", "--genes"), type = "logical",
+              default = FALSE,
               help = "Whether reads were assigned to genes"),
-  make_option(c("-e", "--exons", type = "logical"),
-              default = "FALSE",
+  make_option(c("-e", "--exons"), type = "logical",
+              default = FALSE,
               help = "Whether reads were assigned to exons"),
-  make_option(c("-b", "--exonbins", type = "logical"),
-              default = "FALSE",
+  make_option(c("-b", "--exonbins"), type = "logical",
+              default = FALSE,
               help = "Whether reads were assigned to exonbins"),
-  make_option(c("-t", "--transcripts", type = "logical"),
-              default = "FALSE",
-              help = "Whether reads were assigned to transcripts"),
-  make_option(c("--frombam", type = "logical"),
-              default = "FALSE",
-              help = "Whether reads were assigned to transcripts from the 
-              transcriptome aligned bam file directly. This is more accurate
-              than featureCounts based transcript isoform assignment as
-              the latter does not account for the splice junctions a read
-              is mapped across."),
-  make_option(c("--starjunc", type = "logical"),
-              default = "FALSE",
-              help = "Whether reads were assigned to junctions via relevant STAR tags."), 
-    make_option(c("--threeputr", type = "logical"),
-              default = "FALSE",
-              help = "Whether reads were assigned to 3'-UTRs."),              
-  make_option(c("-j", "--eej", type = "logical"),
-              default = "FALSE",
+  make_option(c("-t", "--transcripts"), type = "logical",
+              default = FALSE,
+              help = "Whether reads were assigned to transcripts via featureCounts"),
+  make_option(c("--frombam"), type = "logical",
+              default = FALSE,
+              help = "Whether reads were assigned to transcripts from the transcriptome BAM"),
+  make_option(c("--starjunc"), type = "logical",
+              default = FALSE,
+              help = "Whether reads were assigned to junctions via STAR jI/jM tags"),
+  make_option(c("--threeputr"), type = "logical",
+              default = FALSE,
+              help = "Whether reads were assigned to 3'-UTRs"),
+  make_option(c("-j", "--eej"), type = "logical",
+              default = FALSE,
               help = "Whether reads were assigned to exon-exon junctions"),
-  make_option(c("--eij", type = "logical"),
-              default = "FALSE",
+  make_option(c("--eij"), type = "logical",
+              default = FALSE,
               help = "Whether reads were assigned to exon-intron junctions"),
-  make_option(c("-o", "--output", type = "character"),
-              help = "Path to full mutation counts/feature assignment output."),
-  make_option(c("-c", "--cBoutput", type = "character"),
-              help = "Path to cB output; same as full output with some columns averaged out."),
-  make_option(c("-m", "--muttypes", type = "character"),
-              help = "String of comma separated mutation types to keep in cBs."),
-  make_option(c("-s", "--sample", type = "character"),
+  make_option(c("-o", "--output"), type = "character",
+              default = NULL,
+              help = "Deprecated; retained for CLI compatibility"),
+  make_option(c("-c", "--cBoutput"), type = "character",
+              default = NULL,
+              help = "Path to per-sample cB CSV output"),
+  make_option(c("-m", "--muttypes"), type = "character",
+              help = "Comma-separated mutation types to retain in cB/cUP"),
+  make_option(c("-s", "--sample"), type = "character",
               help = "Sample name"),
-  make_option(c("--annotation", type = "character"),
-              help = "Path to annotation GTF file."),
-  make_option(c("--makecB", "logical"),
-              default = "FALSE",
-              help = "Whether to create a summarized cB file as output."),
-  make_option(c("--makecUP", "logical"),
-              default = "FALSE",
-              help = "Whether to create a summarized cUP file as output."),
-  make_option(c("--makeArrow", "logical"),
-              default = "FALSE",
-              help = "Whether to create a summarized arrow parquet file as output."),
-  make_option(c("--cUPoutput", type = "character"),
-              help = "Path to cUP output; same as full output with some columns averaged out."),
-  make_option(c("--Arrowoutput", type = "character"),
-              help = "Path to arrow parquet file output; same as full output with some columns averaged out."),
-  make_option(c("--MaxMem", type = "character"),
+  make_option(c("--annotation"), type = "character",
+              default = NULL,
+              help = "Path to annotation GTF file"),
+  make_option(c("--makecB"), type = "logical",
+              default = FALSE,
+              help = "Whether to create a summarized cB CSV output"),
+  make_option(c("--makecUP"), type = "logical",
+              default = FALSE,
+              help = "Whether to create a summarized cUP CSV output"),
+  make_option(c("--makeArrow"), type = "logical",
+              default = FALSE,
+              help = "Whether to create a Hive-partitioned Parquet file output"),
+  make_option(c("--cUPoutput"), type = "character",
+              default = NULL,
+              help = "Path to per-sample cUP CSV output"),
+  make_option(c("--Arrowoutput"), type = "character",
+              default = NULL,
+              help = "Path to Arrow Parquet output"),
+  make_option(c("--MaxMem"), type = "character",
               default = "8GB",
-              help = "Max RAM usage to (mostly) enforce in DuckDB")
+              help = "Max RAM usage to enforce in DuckDB"),
+  make_option(c("--threads"), type = "integer",
+              default = 1L,
+              help = "Number of DuckDB execution threads")
 )
 
 opt_parser <- OptionParser(option_list = option_list)
-opt <- parse_args(opt_parser) # Load options from command line.
-# 
-# opt <- list(
-#   genes = TRUE,
-#   exons = TRUE,
-#   exonbins = TRUE,
-#   frombam = TRUE,
-#   starjunc = TRUE,
-#   eej = FALSE,
-#   eij = FALSE,
-#   output = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/new_output_test.csv.gz",
-#   cBoutput = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/new_cB_test.csv.gz",
-#   muttypes = "TC",
-#   sample = "DMSO_8hr_1",
-#   makecB = TRUE,
-#   makecUP = TRUE,
-#   makeArrow = TRUE,
-#   cUPout = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/new_cUP_test.csv.gz",
-#   ArrowOutput = "C:/Users/isaac/Documents/Simon_Lab/Sandbox/fastq2EZbakR/Data/sample=DMSO_8hr_1/new_cB_test.parquet"
-# )
+opt <- parse_args(opt_parser)
 
 message("opt contents:\n",
         paste(capture.output(str(opt)), collapse = "\n"))
 
-# DuckDB strategy --------------------------------------------------------------
+sql_path <- function(p) {
+  gsub("'", "''", gsub("\\\\", "/", p))
+}
 
 
-dir.create("./results/merge_features_and_muts/duckdb", showWarnings = FALSE)
-con <- dbConnect(duckdb(), dbdir = glue("./results/merge_features_and_muts/duckdb/{opt$sample}.duckdb"), read_only = FALSE)
+# Ephemeral DuckDB setup (spills safely to disk if MaxMem is exceeded, cleaned on exit) ----
+
+tmp_db_dir <- tempfile(pattern = paste0("duckdb_", opt$sample, "_"))
+dir.create(tmp_db_dir, recursive = TRUE, showWarnings = FALSE)
+db_path <- file.path(tmp_db_dir, paste0(opt$sample, ".duckdb"))
+
+con <- dbConnect(duckdb(), dbdir = db_path, read_only = FALSE)
+on.exit({
+  try(dbDisconnect(con, shutdown = TRUE), silent = TRUE)
+  unlink(tmp_db_dir, recursive = TRUE, force = TRUE)
+}, add = TRUE)
+
 dbExecute(con, glue("SET memory_limit='{opt$MaxMem}';"))
+dbExecute(con, glue("SET threads={max(1L, as.integer(opt$threads))};"))
+dbExecute(con, glue("SET temp_directory='{sql_path(tmp_db_dir)}';"))
 
 
-register_feat <- function(view, path, feat_col)
-{
+register_feat <- function(view, path, feat_col) {
   sql <- glue("
-    CREATE OR REPLACE VIEW {`view`} AS
+    CREATE OR REPLACE TEMP VIEW {`view`} AS
       SELECT qname,
              REPLACE({feat_col}, ',', '+') AS {feat_col}
-      FROM read_csv_auto('{path}',
+      FROM read_csv_auto('{sql_path(path)}',
                          header = FALSE,
-                         delim  = '\t', 
+                         delim  = '\t',
                          columns = {{'qname':'VARCHAR', 'status':'VARCHAR', 'nhits':'INT', '{feat_col}':'VARCHAR'}})
       WHERE nhits > 0;
   ")
@@ -125,335 +121,274 @@ register_feat <- function(view, path, feat_col)
 }
 
 
-#### "Load" mutation counts ####
+#### Register mutation counts view ####
 
+counts_path <- glue("results/counts/{opt$sample}_counts.csv.gz")
 dbExecute(con, glue("
-  CREATE OR REPLACE VIEW muts AS
+  CREATE OR REPLACE TEMP VIEW muts AS
     SELECT * FROM read_csv_auto(
-      'results/counts/{opt$sample}_counts.csv.gz', header = TRUE, types = {{'FR': 'VARCHAR'}});
+      '{sql_path(counts_path)}',
+      header = TRUE,
+      types = {{'qname': 'VARCHAR', 'rname': 'VARCHAR', 'FR': 'VARCHAR', 'sj': 'VARCHAR'}}
+    );
 "))
 
 
-#### "Load" feature tables ####
+#### Register feature views ####
 
-feature_vect <- c()
+feature_vect <- character()
 
-
-if(opt$genes){
-  
-  cat("Making genes table...")
-  
+if (isTRUE(opt$genes)) {
+  cat("Registering genes view...\n")
   register_feat("genes", glue("./results/featurecounts_genes/{opt$sample}.s.bam.featureCounts"), "GF")
-  
   feature_vect <- c(feature_vect, "GF")
-  
 }
 
+if (isTRUE(opt$exons)) {
+  cat("Registering exons view...\n")
+  register_feat("exons", glue("./results/featurecounts_exons/{opt$sample}.s.bam.featureCounts"), "XF")
+  feature_vect <- c(feature_vect, "XF")
+}
 
-if(opt$frombam){
-  
-  cat("Making TEC table...")
-  
-  
+if (isTRUE(opt$transcripts)) {
+  cat("Registering featureCounts transcripts view...\n")
+  register_feat("fc_transcripts", glue("./results/featurecounts_transcripts/{opt$sample}.s.bam.featureCounts"), "transcripts")
+  feature_vect <- c(feature_vect, "transcripts")
+}
+
+if (isTRUE(opt$exonbins)) {
+  cat("Registering exonbins view...\n")
+  register_feat("exonbins", glue("./results/featurecounts_exonbins/{opt$sample}.s.bam.featureCounts"), "exon_bin")
+  feature_vect <- c(feature_vect, "exon_bin")
+}
+
+if (isTRUE(opt$frombam)) {
+  cat("Registering TEC view...\n")
+  tec_path <- glue("./results/read_to_transcripts/{opt$sample}.csv")
   dbExecute(con, glue("
-  CREATE OR REPLACE VIEW transcripts AS
-    SELECT qname,
-           bamfile_transcripts
-    FROM read_csv_auto(
-      './results/read_to_transcripts/{opt$sample}.csv', header = TRUE);
+    CREATE OR REPLACE TEMP VIEW transcripts AS
+      SELECT qname,
+             bamfile_transcripts
+      FROM read_csv_auto(
+        '{sql_path(tec_path)}',
+        header = TRUE,
+        types = {{'qname': 'VARCHAR', 'bamfile_transcripts': 'VARCHAR'}}
+      );
   "))
-  
   feature_vect <- c(feature_vect, "TEC")
 }
 
-
-if(opt$exons){
-  
-  cat("Making exons table...")
-  
-  
-  register_feat("exons", glue("./results/featurecounts_exons/{opt$sample}.s.bam.featureCounts"), "XF")
-  
-  feature_vect <- c(feature_vect, "XF")
-  
-}
-
-
-if(opt$exonbins){
-  
-  cat("Making exonbins table...")
-  
-  
-  register_feat("exonbins", glue("results/featurecounts_exonbins/{opt$sample}.s.bam.featureCounts"), "exon_bin")
-  
-  feature_vect <- c(feature_vect, "exon_bin")
-  
-}
-
-if(opt$eej){
-  
-  cat("Making eej table...")
-  
-  
-  register_feat("eej", glue("results/featurecounts_eej/{opt$sample}.s.bam.featureCounts"), "ee_junction_id")
-  
-  feature_vect <- c(feature_vect, "ee_junction_id")
-  
-}
-
-if(opt$eij){
-  
-  cat("Making eij table...")
-  
-  
-  register_feat("eij", glue("results/featurecounts_eij/{opt$sample}.s.bam.featureCounts"), "ei_junction_id")
-  
-  feature_vect <- c(feature_vect, "ei_junction_id")
-  
-}
-
-
-if(opt$threeputr){
-  
-  cat("Making 3'-UTR...")
-  
-  
-  register_feat("threeputr", glue("./results/featurecounts_3utr/{opt$sample}.s.bam.featureCounts"), "threepUTR")
-  
-  feature_vect <- c(feature_vect, "threepUTR")
-  
-}
-
-if(opt$starjunc){
-  
-  cat("Making junctions table...")
-  
-  
+if (isTRUE(opt$starjunc)) {
+  cat("Registering junctions view...\n")
+  junc_path <- glue("./results/read_to_junctions/{opt$sample}.csv.gz")
   dbExecute(con, glue("
-  CREATE OR REPLACE VIEW starjunc AS
-    SELECT qname,
-           junction_start,
-           junction_end
-    FROM read_csv_auto(
-      'results/read_to_junctions/{opt$sample}.csv.gz', header = TRUE);
+    CREATE OR REPLACE TEMP VIEW starjunc AS
+      SELECT qname,
+             junction_start,
+             junction_end
+      FROM read_csv_auto(
+        '{sql_path(junc_path)}',
+        header = TRUE,
+        types = {{'qname': 'VARCHAR', 'junction_start': 'VARCHAR', 'junction_end': 'VARCHAR'}}
+      );
   "))
-  
   feature_vect <- c(feature_vect, "junction_start", "junction_end")
-  
 }
 
-#### Construct query ####
+if (isTRUE(opt$threeputr)) {
+  cat("Registering 3'-UTR view...\n")
+  pe_3utr <- glue("./results/featurecounts_3utr/{opt$sample}_informative.bam.featureCounts")
+  se_3utr <- glue("./results/featurecounts_3utr/{opt$sample}.s.bam.featureCounts")
+  utr_path <- if (file.exists(pe_3utr)) pe_3utr else se_3utr
+  register_feat("threeputr", utr_path, "threepUTR")
+  feature_vect <- c(feature_vect, "threepUTR")
+}
+
+if (isTRUE(opt$eej)) {
+  cat("Registering eej view...\n")
+  register_feat("eej", glue("./results/featurecounts_eej/{opt$sample}.s.bam.featureCounts"), "ee_junction_id")
+  feature_vect <- c(feature_vect, "ee_junction_id")
+}
+
+if (isTRUE(opt$eij)) {
+  cat("Registering eij view...\n")
+  register_feat("eij", glue("./results/featurecounts_eij/{opt$sample}.s.bam.featureCounts"), "ei_junction_id")
+  feature_vect <- c(feature_vect, "ei_junction_id")
+}
+
+
+#### Construct non-materialized LEFT JOIN view ####
 
 feat_catalogue <- list(
   genes = list(
     flag   = "genes",
-    select = "COALESCE(g.GF,        '__no_feature') AS GF",
-    join   = "LEFT JOIN genes        g  USING (qname)"
+    select = "COALESCE(g.GF, '__no_feature') AS GF",
+    join   = "LEFT JOIN genes g USING (qname)"
   ),
   exons = list(
     flag   = "exons",
-    select = "COALESCE(e.XF,        '__no_feature') AS XF",
-    join   = "LEFT JOIN exons        e  USING (qname)"
+    select = "COALESCE(e.XF, '__no_feature') AS XF",
+    join   = "LEFT JOIN exons e USING (qname)"
+  ),
+  transcripts = list(
+    flag   = "transcripts",
+    select = "COALESCE(tr.transcripts, '__no_feature') AS transcripts",
+    join   = "LEFT JOIN fc_transcripts tr USING (qname)"
   ),
   exonbins = list(
     flag   = "exonbins",
     select = "COALESCE(eb.exon_bin, '__no_feature') AS exon_bin",
-    join   = "LEFT JOIN exonbins     eb USING (qname)"
+    join   = "LEFT JOIN exonbins eb USING (qname)"
   ),
-  transcripts = list(
-    flag   = "frombam",                                # because opt$frombam
+  frombam = list(
+    flag   = "frombam",
     select = "COALESCE(t.bamfile_transcripts, '__no_feature') AS TEC",
-    join   = "LEFT JOIN transcripts   t  USING (qname)"
+    join   = "LEFT JOIN transcripts t USING (qname)"
   ),
   starjunc = list(
     flag   = "starjunc",
-    select = "COALESCE(sj.junction_start, '__no_feature') AS junction_start,
-              COALESCE(sj.junction_end,   '__no_feature') AS junction_end",
-    join   = "LEFT JOIN starjunc      sj USING (qname)"
+    select = "COALESCE(sj.junction_start, '__no_feature') AS junction_start,\n         COALESCE(sj.junction_end, '__no_feature') AS junction_end",
+    join   = "LEFT JOIN starjunc sj USING (qname)"
   ),
   threeputr = list(
     flag   = "threeputr",
     select = "COALESCE(tpu.threepUTR, '__no_feature') AS threepUTR",
-    join   = "LEFT JOIN threeputr       tpu USING (qname)"
+    join   = "LEFT JOIN threeputr tpu USING (qname)"
   ),
   eej = list(
-    flag   = "eej",                                
+    flag   = "eej",
     select = "COALESCE(eej.ee_junction_id, '__no_feature') AS ee_junction_id",
-    join   = "LEFT JOIN eej   eej  USING (qname)"
+    join   = "LEFT JOIN eej eej USING (qname)"
   ),
   eij = list(
-    flag   = "eij",                                
+    flag   = "eij",
     select = "COALESCE(eij.ei_junction_id, '__no_feature') AS ei_junction_id",
-    join   = "LEFT JOIN eij   eij  USING (qname)"
+    join   = "LEFT JOIN eij eij USING (qname)"
   )
 )
 
-
-select_fragments <- c("m.*")   # always start with all mutation columns
+select_fragments <- c("m.*")
 join_fragments   <- character()
 
 for (feat in feat_catalogue) {
-  if (opt[[feat$flag]]) {
+  if (isTRUE(opt[[feat$flag]])) {
     select_fragments <- c(select_fragments, feat$select)
     join_fragments   <- c(join_fragments,   feat$join)
   }
 }
 
-
-
-#### LEFT JOIN ####
-
-if(length(join_fragments) == 0){
-
+if (length(join_fragments) == 0L) {
   sql <- glue("
-    CREATE OR REPLACE TABLE merged AS
+    CREATE OR REPLACE TEMP VIEW merged AS
+    SELECT {paste(select_fragments, collapse = ',\n         ')}
+    FROM   muts m;
+  ")
+} else {
+  sql <- glue("
+    CREATE OR REPLACE TEMP VIEW merged AS
     SELECT {paste(select_fragments, collapse = ',\n         ')}
     FROM   muts m
-  ;")
-
-}else{
-
-  sql <- glue("
-    CREATE OR REPLACE TABLE merged AS
-    SELECT {paste(select_fragments, collapse = ',\n         ')}
-    FROM   muts m
-    {paste(join_fragments, collapse = '\n  ')}
-  ;")
+    {paste(join_fragments, collapse = '\n    ')};
+  ")
 }
 
-
-
-# Print for debugging
-cat(sql)
-
+cat(sql, "\n")
 dbExecute(con, sql)
 
 
-# Write to csv
-dbExecute(con, glue("
-  COPY merged TO '{opt$output}' (FORMAT CSV, HEADER 1);
-"))
+#### Summarize cB (shared by CSV cB and Hive Parquet outputs) ####
 
-
-#### cB table creation ####
-mut_cols  <- strsplit(opt$muttypes, ",")[[1]]
-base_cols <- unique(paste0('n', substr(mut_cols, 1, 1)))
+mut_cols     <- trimws(strsplit(opt$muttypes, ",")[[1]])
+base_cols    <- unique(paste0("n", substr(mut_cols, 1, 1)))
 feature_cols <- feature_vect
 
-sel_cols <- DBI::dbQuoteIdentifier(con, c(mut_cols, base_cols))
+quoted_mut_cols  <- DBI::dbQuoteIdentifier(con, mut_cols)
+quoted_base_cols <- DBI::dbQuoteIdentifier(con, base_cols)
+quoted_feat_cols <- if (length(feature_cols) > 0L) DBI::dbQuoteIdentifier(con, feature_cols) else character()
+sel_cols         <- c(quoted_mut_cols, quoted_base_cols)
+sample_lit       <- DBI::dbQuoteString(con, opt$sample)
 
-cat(opt$muttypes)
-cat(mut_cols)
-cat(base_cols)
-cat(opt$makecB)
-cat(opt$makeArrow)
-
-# Create summarized cB
-if(length(join_fragments) == 0){
-
-  dbExecute(con, glue("
-  CREATE OR REPLACE TABLE cB AS
-    SELECT '{opt$sample}'      AS sample,
-            rname, sj,
-            {paste(sel_cols, collapse = ',')},
-            COUNT(*)            AS n
-    FROM   merged
-    GROUP  BY ALL;
-  "))
-
-}else{
-
-  dbExecute(con, glue("
-  CREATE OR REPLACE TABLE cB AS
-    SELECT '{opt$sample}'      AS sample,
-            rname, sj, {paste(feature_cols, collapse = ',')},
-            {paste(sel_cols, collapse = ',')},
-            COUNT(*)            AS n
-    FROM   merged
-    GROUP  BY ALL;
-  "))
-
+if (isTRUE(opt$makecB) || isTRUE(opt$makeArrow)) {
+  if (length(quoted_feat_cols) == 0L) {
+    dbExecute(con, glue("
+      CREATE OR REPLACE TEMP TABLE cB AS
+        SELECT {sample_lit} AS sample,
+               rname, sj,
+               {paste(sel_cols, collapse = ', ')},
+               COUNT(*) AS n
+        FROM   merged
+        GROUP  BY ALL;
+    "))
+  } else {
+    dbExecute(con, glue("
+      CREATE OR REPLACE TEMP TABLE cB AS
+        SELECT {sample_lit} AS sample,
+               rname, sj, {paste(quoted_feat_cols, collapse = ', ')},
+               {paste(sel_cols, collapse = ', ')},
+               COUNT(*) AS n
+        FROM   merged
+        GROUP  BY ALL;
+    "))
+  }
 }
 
 
-#### Write to cB ####
+#### Write per-sample cB ####
 
-if(opt$makecB){
-  
-  dir.create(dirname(opt$cBoutput), showWarnings = FALSE)
-    
-  # Write to csv
-  dbExecute(con, glue("
-    COPY cB TO '{opt$cBoutput}' (FORMAT CSV, HEADER);
-  "))
-  
-    
-}else{
-  
-  write.csv(tibble(),
-            file = opt$cBoutput)
-  
+if (!is.null(opt$cBoutput) && nzchar(opt$cBoutput)) {
+  dir.create(dirname(opt$cBoutput), recursive = TRUE, showWarnings = FALSE)
+  if (isTRUE(opt$makecB)) {
+    dbExecute(con, glue("
+      COPY cB TO '{sql_path(opt$cBoutput)}' (FORMAT CSV, HEADER);
+    "))
+  } else {
+    write.csv(tibble(), file = opt$cBoutput)
+  }
 }
 
 
-#### Write to arrow dataset ####
+#### Write Hive-partitioned Arrow Parquet dataset ####
+# Retains `sample` column inside part-0.parquet and Snappy compression
+# for 100% backwards compatibility with all versions of EZbakR.
 
-if(opt$makeArrow){
-  
-  dir.create(dirname(opt$Arrowoutput), showWarnings = FALSE)
-  
-  # 2b → Parquet
+if (isTRUE(opt$makeArrow) && !is.null(opt$Arrowoutput) && nzchar(opt$Arrowoutput)) {
+  dir.create(dirname(opt$Arrowoutput), recursive = TRUE, showWarnings = FALSE)
   dbExecute(con, glue("
-    COPY cB TO '{opt$Arrowoutput}' (FORMAT PARQUET, COMPRESSION snappy);
+    COPY cB TO '{sql_path(opt$Arrowoutput)}' (FORMAT PARQUET, COMPRESSION snappy);
   "))
-  
-  
-}else{
-  
-  write.csv(tibble(),
-                opt$Arrowoutput)
-  
 }
 
 
-#### Write to cUP ####
+#### Write per-sample cUP ####
 
-if(opt$makecUP){
-  
-  group_cols        <- c("rname", feature_cols, mut_cols)   # columns to GROUP BY
-  group_by_clause   <- paste(group_cols, collapse = ", ")
-  
-  avg_fragments     <- paste(sprintf("AVG(%s) AS %s", base_cols, base_cols),
-                             collapse = ",\n           ")
-  
-  select_clause <- glue("
-    '{opt$sample}' AS sample,
-    {paste(group_cols, collapse = ', ')},
-    {avg_fragments},
-    COUNT(*) AS n
-  ")
-  
-  # Create summarized cUP
-  dbExecute(con, glue("
-    CREATE OR REPLACE TABLE cUP AS
-    SELECT {select_clause}
-    FROM   merged
-    GROUP  BY {group_by_clause};
-  "))
+if (!is.null(opt$cUPoutput) && nzchar(opt$cUPoutput)) {
+  dir.create(dirname(opt$cUPoutput), recursive = TRUE, showWarnings = FALSE)
+  if (isTRUE(opt$makecUP)) {
+    group_cols      <- c(DBI::dbQuoteIdentifier(con, "rname"), quoted_feat_cols, quoted_mut_cols)
+    group_by_clause <- paste(group_cols, collapse = ", ")
+    avg_fragments   <- paste(
+      sprintf("AVG(%s) AS %s", quoted_base_cols, quoted_base_cols),
+      collapse = ",\n           "
+    )
 
-  dbExecute(con, glue("
-    COPY cUP TO '{opt$cUPoutput}' (FORMAT CSV, HEADER);
-  "))
-  
-}else{
-  
-  write.csv(
-    tibble(),
-    file = opt$cUPoutput
-  )
-  
+    select_clause <- glue("
+      {sample_lit} AS sample,
+      {group_by_clause},
+      {avg_fragments},
+      COUNT(*) AS n
+    ")
+
+    dbExecute(con, glue("
+      CREATE OR REPLACE TEMP TABLE cUP AS
+      SELECT {select_clause}
+      FROM   merged
+      GROUP  BY {group_by_clause};
+    "))
+
+    dbExecute(con, glue("
+      COPY cUP TO '{sql_path(opt$cUPoutput)}' (FORMAT CSV, HEADER);
+    "))
+  } else {
+    write.csv(tibble(), file = opt$cUPoutput)
+  }
 }
-
-
-dbDisconnect(con, shutdown = TRUE)
-

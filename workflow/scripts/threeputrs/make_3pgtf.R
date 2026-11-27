@@ -233,13 +233,10 @@ gene_gtf_df <- gtf %>%
                   !is.na(gene_id)) %>%
   dplyr::group_by(seqnames, strand, gene_id) %>%
   dplyr::summarise(
-    start = min(start) - extend_len,
+    start = pmax(1L, min(start) - extend_len),
     end   = max(end) + extend_len,
     type  = "gene",
     .groups = "drop"
-  ) %>%
-  dplyr::filter(
-    !grepl("-", gene_id)
   )
 
 genes <- GenomicRanges::GRanges(

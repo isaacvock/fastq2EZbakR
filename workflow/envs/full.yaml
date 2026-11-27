@@ -6,13 +6,12 @@ dependencies:
   - bash =5.2.37
   - samtools =1.22.1
   - gawk =5.3.1
-  - python=3.11.13
+  - python =3.11.13
   - parallel =20210222
   - pigz =2.8
-  - pysam=0.23.3
+  - pysam =0.23.3
   - star =2.7.11b
-  - bcftools = 1.22
   - igvtools =2.5.3
-  - natsort=8.4.0
+  - natsort =8.4.0
   - bc =1.07.1
   - coreutils =9.5

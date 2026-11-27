@@ -1,0 +1,110 @@
+# Modern external BAM input (auto-detected bam2bakr + genome TEC + cUP/arrow without cB + gene-normalized tracks)
+download_fastqs: False
+sra_accessions: []
+bam2bakr: False
+
+samples:
+    WT_1: data/bams/WT_replicate_1.bam
+    WT_2: data/bams/WT_replicate_2.bam
+    WT_ctl: data/bams/WT_nos4U.bam
+
+control_samples: ["WT_ctl"]
+PE: True
+genome: data/genome/genome.fasta
+annotation: data/annotation/genome.gtf
+
+aligner: "star"
+indices: star_index
+strandedness: "reverse"
+
+features:
+    genes: True
+    exons: True
+    tec: True
+    transcripts: True
+    exonic_bins: True
+    junctions: True
+    threeputr: False
+    eej: False
+    eij: False
+
+final_output:
+    cB: False
+    cUP: True
+    arrow: True
+
+mut_tracks: "TC"
+max_merge_mem: "8G"
+
+normalize: True
+spikename: "\"\""
+use_exons_only: False
+
+skip_trimming: False
+flat_annotation: "data/annotation/flat_b2b.gtf"
+minqual: 40
+WSL: False
+mutpos: False
+make_tracks: True
+run_rsem: False
+tec_mode: "auto"
+tec_end_overhang: 2
+
+call_threeputrs: False
+only_annotated_threeputrs: True
+false_polyA_len: 7
+require_CPA_site: False
+cluster_fxn: 0.0
+extension: 0
+coverage_cutoff: 25
+bedtools_cluster_distance: 100
+deeptools_params: ""
+
+fc_genes_extra: "--nonOverlap 0"
+fc_exons_extra: "--nonOverlap 0"
+fc_transcripts_extra: "-M"
+fc_exonbins_extra: "-M"
+fc_eej_extra: "-M"
+fc_eij_extra: "-M"
+
+fastp_adapters: ""
+fastp_parameters: ""
+fastqc_params: ""
+
+star_index_params: ""
+star_sam_tags: ["NH", "HI", "AS", "NM", "MD", "nM"]
+star_align_params: "--alignEndsType EndToEnd"
+
+snp_min_depth: 5
+snp_min_alt: 3
+snp_min_freq: 0.25
+snp_err_rate: 0.002
+snp_p_cutoff: 1.0e-4
+call_snps_without_ctl: False
+snp_noctl_min_depth: 20
+snp_noctl_min_freq: 0.35
+snp_noctl_err_rate: 0.10
+snp_max_samples: -1
+snp_samples: []
+snp_sample_strategy: "random"
+snp_random_seed: 42
+snp_mpileup_params: ""
+
+hisat2_index_params: ""
+hisat2_align_params: "--no-softclip"
+hisat2_index_base: ""
+
+hisat3n_index_params: ""
+hisat3n_repeat_index: False
+hisat3n_base_change: ""
+hisat3n_directional: True
+hisat3n_align_params: "--no-softclip"
+hisat3n_index_base: ""
+
+rsem_index_params: ""
+rsem_quant_params: ""
+fasterq_dump_extras: "--skip-technical"
+min_pos_coverage: 1
+max_pos_coverage: 10000000
+junction_annotation_params: ""
+multiqc_extra: ""

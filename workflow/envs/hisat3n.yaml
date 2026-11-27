@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - hisat-3n >=0.0.3
+  - samtools =1.22.1
+  - python =3.11.13
